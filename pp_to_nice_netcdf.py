@@ -3,8 +3,10 @@ from time import time
 from uuid import uuid4
 import json
 import math
+import numpy as np
 
 from common_concept import CommonConcepts
+from get_chunkshape import get_chunkshape
 
 def make_filename(identity, attributes,frequency,starting,length):
     """ 
@@ -67,36 +69,7 @@ def get_frequency_attribute(f):
     
     return ti
 
-def chunk_volume_to_shape(data, volume, word_size=4):
-    """
-    Given a data object which has a .shape method, calculate a suitable chunk shape
-    for a given volume (in bytes). (We use word instead of dtype in case the user
-    changes the data type within the writing operation.)
-    """
-    v = volume/word_size 
-    shape = data.shape
-    size = data.size
-    
-    n_chunks = int(size/v)
-    dlen = np.sum(shape)
-    factors = [list(factors(n)) for n in shape]
-    first_guess=[math.ceil(v*x/dlen) for x in shape]
 
-    # correct to be factors
-    result = [x/math.ceil(x/y) for x,y in zip(shape,first_guess)]
-    return result
-
-def factors(n):  
-    j= 2
-    while n > 1:
-        for i in range(j, int(sqrt(n+0.05)) + 1):
-            if n % i == 0:
-                n //= i ; j = i
-                yield i
-                break
-        else:
-            if n > 1:
-                yield n; break
 
 
 def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=False):
@@ -141,7 +114,10 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
             pass
         else:
             f.set_property('common_name',f'cmip6:{common_concept_name}')
-            f.data.nc_set_hdf5_chunksizes(configuration['storage_options']['chunksize'])
+            chunk_shape = get_chunkshape(np.array(f.data.shape), configuration['storage_options']['chunksize'])
+            print(f'Writing array [{f.data.shape}] with chunk shape [{chunk_shape}].' )
+            # yes, the method has the wrong name
+            f.data.nc_set_hdf5_chunksizes(chunk_shape)
         print(global_attributes)
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
         print('\nWriting: ', ss)
@@ -152,7 +128,7 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
             shuffle = configuration['storage_options']['shuffle']
             e3a = time()
             cf.write(f, ss, 
-                    compress=compress, shuffle=shuffle, 
+                    compress=compress, shuffle=shuffle,
                     file_descriptors=global_attributes
                     )
             e3b = time()
