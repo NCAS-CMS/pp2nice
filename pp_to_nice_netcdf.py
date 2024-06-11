@@ -2,8 +2,9 @@ import cf
 from time import time
 from uuid import uuid4
 import json
-import math
+import os
 import numpy as np
+from upload import move_to_s3
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_chunkshape
@@ -128,6 +129,7 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
             e3a = time()
             current_chunking = f.data.nc_hdf5_chunksizes()
             print(f'Writing array [{f.data.shape}] with chunk shape {current_chunking}.' )
+            ss1 = ""
             if current_chunking[0]!=1:
                 # We have to deal with an horrific issue with reading pp data. Effectively we have
                 # read the entire data many times and slice in memory. It's much faster to simply
@@ -146,7 +148,6 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
                 print(f'first temp file written {e3a2-e3a1:.1f}')
                 f = cf.read(ss1)[0]
                 f.data.nc_set_hdf5_chunksizes=current_chunking
-                #### ADD CODE to remove temporary file
                 e3a3 = time()
                 print(f'lazy reading temp file took {e3a3-e3a2:.1f}s')
             cf.write(f, ss,
@@ -155,13 +156,25 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
                     )
             e3b = time()
             print(f"... written {e3b-e3a:.1f}")
+            if ss1 != '': 
+                os.remove(ss1)
     e3 = time()
     if logging:
         print(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
+    return ss
+
+def convert_pp_to_s3nc(cc, config_file, task_number, target, bucket, 
+                       logging=True, dummy_run=False):
+    """
+    Convert a pp file on POSIX disk to netcdf and upload to S3
+    """
+    filename = pp2nc_from_config(cc, config_file, task_number, logging=True, dummy_run=False)
+    move_to_s3(filename, target, bucket)
 
 
 if __name__ == "__main__":
     cc = CommonConcepts()
     task_number = 2
     config_file = 'n1280_processing_v1.json'
-    pp2nc_from_config(cc, config_file, task_number, logging=True, dummy_run=False)
+    #filename = pp2nc_from_config(cc, config_file, task_number, logging=True, dummy_run=False)
+    convert_pp_to_s3nc(c, config_file, task_number, 'hpos', 'bnl')
