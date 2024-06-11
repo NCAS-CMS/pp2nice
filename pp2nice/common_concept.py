@@ -175,19 +175,5 @@ class CommonConcepts:
             raise 
 
 
-def working_test():
-    wd = '/home/users/lawrence/hiresgw/hrcm/hrcm/n1280run/u-ch330/1hrly/'
-    f = 'ch330a.p919810219.pp'
-    fn = wd+f
-    ff = cf.read(fn)
-    c = CommonConcepts()
-    for f in ff:
-        r = c.identify(f)
-        print(f.standard_name, r)
-if __name__=="__main__":
-    # test for duplicates
-    verify_consistency()
-    # test working 
-    working_test()
-    
+
 

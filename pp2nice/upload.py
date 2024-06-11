@@ -2,8 +2,6 @@ from pathlib import Path
 from minio import Minio
 import json
 import os
-import tempfile
-import numpy as np
 
 def get_user_config(target, location='.mc/config.json'):
     """
@@ -69,7 +67,6 @@ def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, 
     except:
         raise
 
-
 def move_to_s3(file_path, target, bucket, testfail=True):
     """
     Move <file_path> to <bucket> at the minio <target> (from
@@ -106,51 +103,4 @@ def do_verify(file_size, etag, client, bucket, object_name):
     print(f'Warning - Cannot verify using checksums - but at least file sizes do match for: {object_name}!')
     # see this useful stackoverflow: 
     # https://stackoverflow.com/questions/62555047/how-is-the-minio-etag-generated
-
-    
-def test_move_fail(target="hpos", bucket="bnl", secure=False):
-    """
-    Test that move and delete does what you think it will do
-    """
-    size = 1024
-    #with tempfile.NamedTemporaryFile("w",delete_on_close=False) as fp:
-    with tempfile.NamedTemporaryFile("w",delete=False) as fp:
-        data = np.ones(size)
-        data.tofile(fp)
-        fname = fp.name
-        move_to_s3(fname, target, bucket, testfail=True)
-        assert os.path.exists(fname)
-        fp.file.close()
-    
-
-def test_move_succeed(target="hpos", bucket="bnl", secure=False):
-    """
-    Test that move and delete does what you think it will do
-    """
-    size = 1024
-    #with tempfile.NamedTemporaryFile("w",delete_on_close=False) as fp:
-    with tempfile.NamedTemporaryFile("w",delete=False) as fp:
-        data = np.ones(size)
-        data.tofile(fp)
-        fname = fp.name
-        move_to_s3(fname, target, bucket, testfail=False)
-        assert not os.path.exists(fname)
-        fp.file.close()
-       
-def testme(target="hpos", bucket="bnl", secure=True):
-    """
-    Copies this file to the bucket at target. Used for testing
-    """
-    mypath = Path(__file__)
-    credentials = get_user_config(target)
-    minio_upload(mypath, credentials, bucket,
-        secure=secure,
-        object_name = 'test_file_delete_at_whenever.py'
-        )
-
-
-if __name__=="__main__":
-
-    test_move_succeed()
-    test_move_fail()
 

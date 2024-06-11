@@ -82,30 +82,4 @@ def get_chunkshape(shape, volume, word_size=4, logging=False, scale_tol=0.8):
         print(f'Chunk size {results} - wanted {int(n_chunks)}/{int(volume)}B will get {actual_n_chunks}/{cvolume}B')
     return results
 
-def test_n1280( volume = 1e6, logging=True):
-    shape = np.array([720, 1920, 2560])
-    result = get_chunkshape(shape, volume, logging=logging)
-    for x,y in zip(shape, result):
-        try:
-            assert x%y == 0
-        except:
-            raise ValueError(f'Chunk size {result} does not fit into {shape}')
-    size = np.prod(np.array(result)) * 4 
-
-def test_n1280b( volume = 1e6, logging=True):
-    shape = np.array([719, 1920, 2560])
-    result = get_chunkshape(shape, volume, logging=logging)
-    for x,y in zip(shape, result):
-        try:
-            assert x%y == 0
-        except:
-            raise ValueError(f'Chunk size {result} does not fit into {shape}')
-    size = np.prod(np.array(result)) * 4 
-
-
-if __name__ == "__main__":
-    test_n1280(1e6)
-    test_n1280(2e6)
-    test_n1280(4e6)
-    test_n1280b(2e6)
-    
+d
