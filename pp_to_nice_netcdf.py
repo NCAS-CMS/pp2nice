@@ -177,4 +177,4 @@ if __name__ == "__main__":
     task_number = 2
     config_file = 'n1280_processing_v1.json'
     #filename = pp2nc_from_config(cc, config_file, task_number, logging=True, dummy_run=False)
-    convert_pp_to_s3nc(c, config_file, task_number, 'hpos', 'bnl')
+    convert_pp_to_s3nc(cc, config_file, task_number, 'hpos', 'bnl')
