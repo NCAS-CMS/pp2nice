@@ -19,8 +19,9 @@ config_name = "n1280_processing_v1.json"
 ### NetCDF Storage Configuration
 # Only change this if you really know what you are doing.
 # Chunksize is size _before_ compression, and applied to all variables.
+# Your actual chunk size will depend on the shape of the variable and the compressed volume
 
-storage_options = {'compress':4, 'shuffle':True, 'chunksize':10^6}
+storage_options = {'compress':4, 'shuffle':True, 'chunksize':1e6}
 
 ### Experiment Configuration
 # Add your own metadata, but note there is a small mandatory list shown below

@@ -104,7 +104,7 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
     fields = cf.read(myfiles)
     e2 = time()
     if logging:
-        print(f'\nReading completed in {e2-e1:.1}s\n')
+        print(f'\nReading completed in {e2-e1:.1f}s\n')
 
     for f in fields:
         fkey = get_frequency_attribute(f)
@@ -115,7 +115,6 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
         else:
             f.set_property('common_name',f'cmip6:{common_concept_name}')
             chunk_shape = get_chunkshape(np.array(f.data.shape), configuration['storage_options']['chunksize'])
-            print(f'Writing array [{f.data.shape}] with chunk shape [{chunk_shape}].' )
             # yes, the method has the wrong name
             f.data.nc_set_hdf5_chunksizes(chunk_shape)
         print(global_attributes)
@@ -127,15 +126,38 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
             compress = configuration['storage_options']['compress']
             shuffle = configuration['storage_options']['shuffle']
             e3a = time()
-            cf.write(f, ss, 
+            current_chunking = f.data.nc_hdf5_chunksizes()
+            print(f'Writing array [{f.data.shape}] with chunk shape {current_chunking}.' )
+            if current_chunking[0]!=1:
+                # We have to deal with an horrific issue with reading pp data. Effectively we have
+                # read the entire data many times and slice in memory. It's much faster to simply
+                # write the data out and rechunk from the netcdf version - though it's still
+                # slow!
+                print('Need to use temp file')
+                new_chunk = list(f.data.shape)
+                new_chunk[0] = 1
+                ss1 = ss[0:-3]+'-tmp.nc'
+                e3a1 = time()
+                print(new_chunk)
+                f.data.nc_set_hdf5_chunksizes(new_chunk)
+                cf.write(f,ss1,compress=compress, shuffle=shuffle,
+                    file_descriptors=global_attributes)
+                e3a2 = time()
+                print(f'first temp file written {e3a2-e3a1:.1f}')
+                f = cf.read(ss1)[0]
+                f.data.nc_set_hdf5_chunksizes=current_chunking
+                #### ADD CODE to remove temporary file
+                e3a3 = time()
+                print(f'lazy reading temp file took {e3a3-e3a2:.1f}s')
+            cf.write(f, ss,
                     compress=compress, shuffle=shuffle,
                     file_descriptors=global_attributes
                     )
             e3b = time()
-            print(f"... written {e3b-e3a:.1}")
+            print(f"... written {e3b-e3a:.1f}")
     e3 = time()
     if logging:
-        print(f'\nWriting {len(fields)} files took {e3-e2:.1}s\n')
+        print(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
 
 
 if __name__ == "__main__":

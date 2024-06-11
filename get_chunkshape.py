@@ -1,24 +1,32 @@
 import numpy as np
 import math
 
-def get_chunkshape(shape, volume, word_size=4, logging=False):
+def get_chunkshape(shape, volume, word_size=4, logging=False, scale_tol=0.8):
     """
-    Given a data object which has a .shape method, calculate a suitable chunk shape
+    Given a shape tuple, and byte size for the elements, calculate a suitable chunk shape
     for a given volume (in bytes). (We use word instead of dtype in case the user
     changes the data type within the writing operation.)
     """
 
+    def constrained_largest_divisor(number, constraint):
+        """ 
+        Find the largest divisor of number which is less than the constraint
+        """
+        for i in range(int(constraint), 1, -1):
+            if number % i == 0:
+                return i
+        return 1
+
     def revise(dimension, guess):
         """ 
-        We need the largest integer less than guess 
+        We need the largest integer (down) less than guess 
         which is a factor of dimension, and we need
         to know how much smaller than guess it is,
         so that other dimensions can be scaled out.
         """
         old_guess = guess
         # there must be a more elegant way of doing this
-        while dimension%guess != 0:
-            guess -= 1
+        guess = constrained_largest_divisor(dimension,old_guess)
         scale_factor = old_guess/guess
         return scale_factor, guess
 
@@ -59,6 +67,14 @@ def get_chunkshape(shape, volume, word_size=4, logging=False):
                 scale_factor = scale_factor ** (1/(shape.size-remaining))
                 weights_scaling[remaining:] = np.full(shape.size-remaining,scale_factor)
         remaining += 1 
+        # fix up the last indice as we could have drifted quite small
+        if i == indices[-1]:
+            size_so_far = np.prod(np.array(results))
+            scale_miss = size_so_far/v
+            if scale_miss < scale_tol:
+                constraint = results[-1]/(scale_miss)
+                scaled_up=constrained_largest_divisor(shape[-1],constraint)
+                results[-1]=scaled_up
 
     if logging:
         actual_n_chunks = int(np.prod(np.divide(shape,np.array(results))))
@@ -67,6 +83,16 @@ def get_chunkshape(shape, volume, word_size=4, logging=False):
     return results
 
 def test_n1280( volume = 1e6, logging=True):
+    shape = np.array([720, 1920, 2560])
+    result = get_chunkshape(shape, volume, logging=logging)
+    for x,y in zip(shape, result):
+        try:
+            assert x%y == 0
+        except:
+            raise ValueError(f'Chunk size {result} does not fit into {shape}')
+    size = np.prod(np.array(result)) * 4 
+
+def test_n1280b( volume = 1e6, logging=True):
     shape = np.array([719, 1920, 2560])
     result = get_chunkshape(shape, volume, logging=logging)
     for x,y in zip(shape, result):
@@ -81,4 +107,5 @@ if __name__ == "__main__":
     test_n1280(1e6)
     test_n1280(2e6)
     test_n1280(4e6)
+    test_n1280b(2e6)
     
