@@ -3,6 +3,7 @@ from minio import Minio
 import json
 import os
 import tempfile
+import numpy as np
 
 def get_user_config(target, location='.mc/config.json'):
     """
@@ -83,7 +84,7 @@ def move_to_s3(file_path, target, bucket, testfail=True):
     if credentials['url'].startswith('https'):
         secure = True
     try:
-        minio_upload(mypath, credentials, bucket, secure=secure)
+        minio_upload(file_path, credentials, bucket, secure=secure)
         if testfail:
             raise RuntimeError('Testing failure required')
         os.remove(file_path)
@@ -101,21 +102,10 @@ def do_verify(file_size, etag, client, bucket, object_name):
     result = client.stat_object(bucket, object_name)
     object_size = result.size
     if object_size != file_size:
-        raise VerificationError(f'Object size ({object_size}) does not match file size ({file_size})')
+        raise RuntimeError(f'Object size ({object_size}) does not match file size ({file_size})')
     print(f'Warning - Cannot verify using checksums - but at least file sizes do match for: {object_name}!')
-
-
     # see this useful stackoverflow: 
     # https://stackoverflow.com/questions/62555047/how-is-the-minio-etag-generated
-
-
-def _remove_s3_file(target, bucket, secure, object_name):
-    """ 
-    Really only for use in testing, if you want to delete
-    stuff in real life, write your own code or use the mc
-    command directly.
-    """"
-    raise NotImplementedError
 
     
 def test_move_fail(target="hpos", bucket="bnl", secure=False):
@@ -123,27 +113,31 @@ def test_move_fail(target="hpos", bucket="bnl", secure=False):
     Test that move and delete does what you think it will do
     """
     size = 1024
-    with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+    #with tempfile.NamedTemporaryFile("w",delete_on_close=False) as fp:
+    with tempfile.NamedTemporaryFile("w",delete=False) as fp:
         data = np.ones(size)
-        np.save(fp, data)
+        data.tofile(fp)
         fname = fp.name
-        move_to_s3(fname, target, bucket, secure, testfail=True)
-        assert os.path.exists(dummy_file)
-        # and now it gets killed
+        move_to_s3(fname, target, bucket, testfail=True)
+        assert os.path.exists(fname)
+        fp.file.close()
+    
 
 def test_move_succeed(target="hpos", bucket="bnl", secure=False):
     """
     Test that move and delete does what you think it will do
     """
     size = 1024
-    with tempfile.NamedTemporaryFile(delete_on_close=False) as fp:
+    #with tempfile.NamedTemporaryFile("w",delete_on_close=False) as fp:
+    with tempfile.NamedTemporaryFile("w",delete=False) as fp:
         data = np.ones(size)
-        np.save(fp, data)
+        data.tofile(fp)
         fname = fp.name
-        move_to_s3(fname, target, bucket, secure, testfail=True)
-        assert not os.path.exists(dummy_file)
+        move_to_s3(fname, target, bucket, testfail=False)
+        assert not os.path.exists(fname)
+        fp.file.close()
        
-def testme(target="hpos", bucket="bnl", secure=False):
+def testme(target="hpos", bucket="bnl", secure=True):
     """
     Copies this file to the bucket at target. Used for testing
     """
@@ -157,5 +151,6 @@ def testme(target="hpos", bucket="bnl", secure=False):
 
 if __name__=="__main__":
 
-    testme()
+    test_move_succeed()
+    test_move_fail()
 
