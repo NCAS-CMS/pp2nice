@@ -4,10 +4,10 @@ from uuid import uuid4
 import json
 import os
 import numpy as np
-from src.pp2nice.upload import move_to_s3
+from pp2nice.upload import move_to_s3
 
-from src.pp2nice.common_concept import CommonConcepts
-from src.pp2nice.get_chunkshape import get_chunkshape
+from pp2nice.common_concept import CommonConcepts
+from pp2nice.get_chunkshape import get_chunkshape
 
 def make_filename(identity, attributes,frequency,starting,length):
     """ 
