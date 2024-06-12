@@ -50,11 +50,11 @@ def get_frequency_attribute(f):
                 ti+='Pt'
         elif ti == 24:
             ti = 'day'
-            if method != 'mean':
+            if cm != 'mean':
                 raise NotImplementedError(f'Need to handle daily data with {cm} method')
         elif ti == 720:
             ti = 'mon'
-            if method != 'mean':
+            if cm != 'mean':
                 raise NotImplementedError(f'Need to handle monthly data with {cm} method')
         else:
             raise NotImplementedError(f'Unexpected time interval: {ti}hours')
