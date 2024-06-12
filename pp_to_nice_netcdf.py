@@ -73,7 +73,9 @@ def get_frequency_attribute(f):
 
 
 
-def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=False):
+def pp2nc_from_config(cc, config_file, task_number, 
+                        target=None, bucket=None, 
+                        logging=False, dummy_run=False):
     """ 
     Convert pp files to netcdf using a specifc task_number 
     from an instance of the json configuration 
@@ -142,7 +144,8 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
                 e3a1 = time()
                 print(new_chunk)
                 f.data.nc_set_hdf5_chunksizes(new_chunk)
-                cf.write(f,ss1,compress=compress, shuffle=shuffle,
+                # we try not compressing the temporary data in the hope it will speed things up
+                cf.write(f,ss1,compress=0, shuffle=False,
                     file_descriptors=global_attributes)
                 e3a2 = time()
                 print(f'first temp file written {e3a2-e3a1:.1f}')
@@ -158,23 +161,21 @@ def pp2nc_from_config(cc, config_file, task_number, logging=False, dummy_run=Fal
             print(f"... written {e3b-e3a:.1f}")
             if ss1 != '': 
                 os.remove(ss1)
+            if bucket is not None and target is not None:
+                move_to_s3(ss, target, bucket)
+                e3c = time()
+                print(f'...file moved to s3 in {e3c-e3b:.1f}s')
     e3 = time()
     if logging:
         print(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
-    return ss
-
-def convert_pp_to_s3nc(cc, config_file, task_number, target, bucket, 
-                       logging=True, dummy_run=False):
-    """
-    Convert a pp file on POSIX disk to netcdf and upload to S3
-    """
-    filename = pp2nc_from_config(cc, config_file, task_number, logging=True, dummy_run=False)
-    move_to_s3(filename, target, bucket)
 
 
 if __name__ == "__main__":
     cc = CommonConcepts()
-    task_number = 2
+    task_number = int(os.environ['SLURM_ARRAY_TASK_ID'])
     config_file = 'n1280_processing_v1.json'
-    #filename = pp2nc_from_config(cc, config_file, task_number, logging=True, dummy_run=False)
-    convert_pp_to_s3nc(cc, config_file, task_number, 'hpos', 'bnl')
+    print(f"Using task {task_number} from {config_file}")
+    pp2nc_from_config(cc, config_file, task_number, 
+                    target ='hpos', bucket='bnl',
+                    logging=True, dummy_run=False)
+    
