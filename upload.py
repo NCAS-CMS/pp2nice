@@ -57,6 +57,7 @@ def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, 
         print('** CHECK ENDPOINT ADDRESS and SECURE OPTION')
         raise
     if not found:
+        ok = client.make_bucket(bucket)
         print('Created bucket', bucket)
 
     #upload
