@@ -70,7 +70,7 @@ def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, 
         raise
 
 
-def move_to_s3(file_path, target, bucket, testfail=True):
+def move_to_s3(file_path, target, bucket, testfail=False):
     """
     Move <file_path> to <bucket> at the minio <target> (from
     your credential file). NOTE THAT THE FILE AT FILE_PATH

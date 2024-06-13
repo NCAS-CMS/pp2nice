@@ -142,23 +142,26 @@ def pp2nc_from_config(cc, config_file, task_number,
                 new_chunk[0] = 1
                 ss1 = ss[0:-3]+'-tmp.nc'
                 e3a1 = time()
-                print(new_chunk)
+                if logging:
+                    print(new_chunk)
                 f.data.nc_set_hdf5_chunksizes(new_chunk)
                 # we try not compressing the temporary data in the hope it will speed things up
                 cf.write(f,ss1,compress=0, shuffle=False,
                     file_descriptors=global_attributes)
                 e3a2 = time()
-                print(f'first temp file written {e3a2-e3a1:.1f}')
+                if logging:
+                    print(f'first temp file written {e3a2-e3a1:.1f}')
                 f = cf.read(ss1)[0]
                 f.data.nc_set_hdf5_chunksizes=current_chunking
                 e3a3 = time()
-                print(f'lazy reading temp file took {e3a3-e3a2:.1f}s')
+                if logging:
+                    print(f'lazy reading temp file took {e3a3-e3a2:.1f}s')
             cf.write(f, ss,
                     compress=compress, shuffle=shuffle,
                     file_descriptors=global_attributes
                     )
             e3b = time()
-            print(f"... written {e3b-e3a:.1f}")
+            print(f"... file {ss} written {e3b-e3a:.1f}")
             if ss1 != '': 
                 os.remove(ss1)
             if bucket is not None and target is not None:
