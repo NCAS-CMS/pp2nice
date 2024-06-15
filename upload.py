@@ -16,7 +16,7 @@ def get_user_config(target, location='.mc/config.json'):
         config = jdata['aliases'][target] 
         return config
     except KeyError:
-        raise ValueError('Minio target [{target}] not found in {jfile}')
+        raise ValueError(f'Minio target [{target}] not found in {jfile}')
 
 def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, verify=False):
 
