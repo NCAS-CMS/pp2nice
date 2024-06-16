@@ -6,6 +6,18 @@ from time import time
 import click
 import argparse, shlex
 
+def fmt_size(num, suffix="B"):
+    """ Take the sizes and humanize them """
+    for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
+def fmt_date(adate):
+    """ Take the reported date and humanize it"""
+    return adate.strftime('%Y-%m-%d %H:%M:%S %Z')
+
 def _handle_argument(target):
     """
     Extract the interesting stuff from the simple command target argument
@@ -82,12 +94,12 @@ def do_rm(client, bucket, pattern):
     if len(files) == 0:
         print(f'No files to delete matching [{pattern}] found in [{bucket}] in [{client.alias_name}]')
         return
-    print('**\nManifest of files to delete\n**')
+    print(_p('**\nManifest of files to delete\n**'))
     for file in files:
-        print(file)
-    if click.confirm('Delete these files from {bucket}?', default=False):
-        delete_list = [DeleteObject(file) for file in files]
-        errors = client.remove_objects( bucket, delete_list)
+        print(file.object_name)
+    if click.confirm(_p('Delete these files from {bucket}?'), default=False):
+        delete_list = [DeleteObject(file.object_name) for file in files]
+        errors = list(client.remove_objects( bucket, delete_list))
         if errors != []:
             for error in errors:
                 print("error occurred when deleting object", error)
@@ -112,20 +124,22 @@ def do_ls(client, bucket, pattern, columns=None, size=None, date=None):
             d.append('Last Modified')
         data = [d]
         m = [len(x) for x in d]
+        fmts = ['>' for x in d]
+        fmts[0]='<'
         objects = _lswild(client, bucket, pattern, objects=True)
         for o in objects:
             d = [o.object_name]
             if size:
-                d.append(str(o.size))
+                d.append(fmt_size(o.size))
             if date:
-                d.append(str(o.last_modified))
+                d.append(fmt_date(o.last_modified))
             data.append(d)
             m = [max(i,len(j)) for i,j in zip(m,d)]
         for i in range(1,len(m)):
             m[i]+=5
         files = [] 
         for row in data:
-            files.append(' '.join(f"{item:>{max_len}}" for item, max_len in zip(row, m)))
+            files.append(' '.join(f"{item:{fmt}{max_len}}" for item, fmt, max_len in zip(row, fmts, m)))
     else:
         files = _lswild(client, bucket, pattern)
 
@@ -166,6 +180,39 @@ class PsuedoFileSystem:
                 raise NotADirectoryError(f'No bucket {bucket} - start with valid bucket name or none')
             self.bucket = bucket
             self.cd(cwd)
+        self.path = ''
+
+    def _recurse(self, path, match=None):
+        """ 
+        From a given path, head down the tree and do some summing
+        """
+        if path == "":
+            prefix = None
+        else:
+            prefix = path
+        objects = self.client.list_objects(self.bucket,prefix=prefix)
+        if match is not None:
+            objects = [o for o in objects if Path(o.object_name).match(match)]
+
+        sum  = 0
+        files = 0
+        dirs = 1
+        mydirs = []
+        myfiles = []
+        for o in objects:
+            if o.is_dir:
+                path = f'{path}/{o.object_name}'
+                dsum, dfiles, ddirs, md, mf = self._recurse(path)
+                sum += dsum
+                files += dfiles
+                dirs += 1
+                mydirs.append([o.object_name, fmt_size(dsum)])
+            else:
+                sum += o.size
+                files +=1
+                myfiles.append([o.object_name, fmt_size(o.size), fmt_date(o.last_modified)])
+        return sum, files, dirs, mydirs, myfiles
+
 
     def next(self, commands):
         click.echo(_i('Available commands: ') +_e(' '.join(commands)))
@@ -185,49 +232,78 @@ class PsuedoFileSystem:
                 self.ls(bits[1])
             case 'cd':
                 self.cd(bits[1])
+            case 'rm':
+                self.rm(bits[1:])
+        click.echo(_i('Command Not Understood'))
+        self.next(commands)
     def cb(self, bucket):
         if bucket is None:
             click.echo(_p('Location') + f': {self.alias}')
             click.echo(_p('Available Buckets') + f': {" ".join(self.buckets)}')
             commands = ['cb','exit']
             self.next(commands)
-        self.bucket = bucket
-        objects = list(self.client.list_objects(bucket))
-        click.echo(_i('Bucket: ') + bucket + _i(f' contains {len(objects)} files/objects.'))
+        if bucket not in self.buckets:
+            click.echo(_p(f'Bucket [{bucket}] does not exist'))
+        else:
+            self.bucket = bucket
+            volume, nfiles, ndirs, mydirs, myfiles = self._recurse('')
+            click.echo(_i('Bucket: ') + bucket + _i(' contains ')+ fmt_size(volume) + _i(' in ') + str(nfiles) + _i(' files/objects.'))
         commands = ['cb','cd','exit']
         self.next(commands)
+
     def cd(self,path):
         if path is None:
-            self.path = ''
-        else:
-            self.path = path
-        objects = list(self.client.list_objects(self.bucket,prefix=path))
-        if len(objects)==0:
-            raise ValueError('Path {path} does not exist')
-        directories, files = [],[]
-        for o in objects:
-            bits = o.object_name.split('/')
-            if len(bits)> 1:
-                directories.append(bits[0])
-            else:
-                files.append(o.object_name)
-        self.directories = directories
-        self.files = files
-        print(self.alias, self.bucket, self.path)
-        location = '/'.join([self.alias, self.bucket, self.path])
-        click.echo(_i('Location: ') + location + _i(f' contains {len(objects)} files/objects'))
-        click.echo(_i('"Directories": ') + _e(" ".join(self.directories)))
+            path = ''
+        if path == '..':
+            if self.path != '':
+                bits = self.path.split('/')
+                del bits[-2:]
+                path = '/'.join(bits)
+        if path != '' and not path.endswith('/'):
+            path+='/'
+        
+        self.path = path
+        volume, nfiles, ndirs, mydirs, myfiles = self._recurse(path)
+        if path == '':
+            path = '/'
+        click.echo(_i('Location: ') + path + _i(' contains ')+ fmt_size(volume) + _i(' in ') + str(nfiles) + _i(' files/objects.'))
+        click.echo(_i('This directory contains ')+ str(len(myfiles)) + _i(' files and ') + str(len(mydirs)) + _i(' directories.'))
+        if len(mydirs) > 0:
+            click.echo(_i('Sub-directories are : ')+_e(' '.join([f'{d[0]}({d[1]})' for d in mydirs])))
         commands = ['ls','cd','cb','exit']
         self.next(commands)
-    def ls(self, ignore):
-        if ignore is None:
-            click.echo(_e(" ".join(self.files)))
-        else:
-            do_ls(self.client, self.bucket, ignore, size=True, date=True)
-        commands = ['ls','cd','cb','exit']
+
+    def ls(self, extras):
+
+        def _pstrip(x):
+            bits = x.split('/')
+            return bits[-1]
+        volume, nfiles, ndirs, mydirs, myfiles = self._recurse(self.path, extras)
+        click.echo(_i('Location: ') + self.path + _i(' contains ')+ fmt_size(volume) + _i(' in ') + str(nfiles) + _i(' files/objects.'))
+        directory = 'directory' 
+        if extras: directory = "match"
+        click.echo(_i(f'This {directory} contains ')+ str(len(myfiles)) + _i(' files and ') + str(len(mydirs)) + _i(' directories.'))
+      
+        mlen = 0
+        for f in myfiles:
+            lf = len(f[0])
+            if lf > mlen:
+                mlen = lf
+        mlen+=1
+        for f in myfiles:
+            click.echo(f'{_pstrip(f[0]):<{mlen}} '+_e(f'{f[1]:>10}') +f'   {f[2]}')   
+        if len(mydirs) > 0:  
+            click.echo(_i('Sub-directories are : ')+_e(' '.join([f'{d[0]}({d[1]})' for d in mydirs])))   
+        commands = ['ls','cd','cb','exit','rm']
         self.next(commands)
     
+    def rm(self, extras, collect = False):
 
+        path = self.path + ''.join(extras)
+        do_rm(self.client, self.bucket, path)
+        commands = ['ls','cd','cb','exit','rm']
+        self.next(commands)
+        
 
 @click.group()
 def cli():
