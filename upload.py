@@ -1,22 +1,11 @@
 from pathlib import Path
 from minio import Minio
-import json
+from s3core import get_user_config
 import os
 import tempfile
 import numpy as np
 
-def get_user_config(target, location='.mc/config.json'):
-    """
-    Obtain credentials from user configuration file
-    """
-    config = Path.home()/location
-    with open(config,'r') as jfile:
-        jdata = json.load(jfile)
-    try:
-        config = jdata['aliases'][target] 
-        return config
-    except KeyError:
-        raise ValueError(f'Minio target [{target}] not found in {jfile}')
+
 
 def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, verify=False):
 
