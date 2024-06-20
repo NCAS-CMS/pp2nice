@@ -94,22 +94,9 @@ def ls(action):
 @click.argument('target')
 def manage(target):
     """ This provides a command line pseudo shell method for managing files """
-   
-    bits = target.split('/')
-    if len(bits) > 2:
-        cwd = "/".join(bits[2:])
-        bucket = bits[1]
-        alias = bits[0]
-    elif len(bits) == 2: 
-        cwd = ""
-        bucket = bits[1]
-        alias = bits[0]
-    else:
-        bucket = None
-        cwd = ""
-        alias = target
+
     
-    pfs = PsuedoFileSystem(alias, bucket, cwd)
+    pfs = PsuedoFileSystem(target)
 
 if __name__ == "__main__":
    cli()

@@ -46,23 +46,40 @@ class PsuedoFileSystem:
     """
     Provides a limited shell for working with S3 buckets as if they were a posix like file system
     """
-    def __init__(self, alias, bucket, cwd):
+    def __init__(self, target):
         """
-        Can be instantiated with just a minio alias, or a specific bucket, or even a specific working directory in that bucket
+        Can be instantiated with just a minio alias, or a specific bucket or bucket/path.
         """
         click.echo(_i('You have entered a lightweight management tool for organising "files" inside an S3 object store'))
-        self.client = get_client(alias)
-        self.alias = alias
+        bits = target.split('/')
+
+        self.alias = bits[0]
+        print(self.alias)
+        self.client = get_client(self.alias)
+
         self.buckets = [b.name for b in self.client.list_buckets()]
-        if bucket is None or cwd is None:
-            self.cb(bucket)
-        else:
+
+        match len(bits):
+
+            case 1: 
+                self.bucket = None
+                self.path = None
+                commands = ['cb','mb','exit']
+            case 2:
+                self.bucket = bits[1]
+                self.path = None
+                commands = ['cb','mb','exit']
+            case 3:
+                self.bucket = bits[1]
+                self.path = bits[2]
+                commands = self._cd_lander(self.path)
+            case _:
+                click.echo(_p('Initialisation not understood'))
+                exit()
             
-            if bucket not in self.buckets:
-                raise NotADirectoryError(f'No bucket {bucket} - start with valid bucket name or none')
-            self.bucket = bucket
-            self.cd(cwd)
-        self.path = ''
+        self._next(commands)
+        exit()
+
 
 
     def _recurse(self, path, match=None):
@@ -100,32 +117,35 @@ class PsuedoFileSystem:
         """ 
         Internal command to prompt for the next action after doing an action
         """
-        click.echo(_i('Available commands: ') +_e(' '.join(commands)))
-        command = click.prompt(_p('Enter'))
-        bits = command.split(' ')
-        if len(bits) == 1:
-            bits.append(None)
-        if bits[0] not in commands:
-            click.echo(_i('Please enter one of the available commands: ')+ _p(" ".join(commands)))
-            self._next(commands)
-        if bits[0] == 'exit':
-            exit()
-        match bits[0]:
-            case 'cb': 
-                self.cb(bits[1])
-            case 'ls':
-                self.ls(bits[1])
-            case 'cd':
-                self.cd(bits[1])
-            case 'rm':
-                self.rm(bits[1:])
-            case 'mv':
-                self.mv(bits[1:])
-            case 'mb':
-                self.mb(bits[1])
-        click.echo(_i('Command Not Understood'))
-        self._next(commands)
-
+        cmd = None
+        while cmd != 'exit':
+            click.echo(_i('Available commands: ') +_e(' '.join(commands)))
+            command = click.prompt(_p('Enter'))
+            bits = command.split(' ')
+            cmd = bits[0]
+            if len(bits) == 1:
+                bits.append(None)
+            if cmd not in commands:
+                click.echo(_i('Please enter one of the available commands: ')+ _p(" ".join(commands)))
+            else:
+                match cmd:
+                    case 'exit':
+                        exit()
+                    case 'cb': 
+                        commands = self.cb(bits[1])
+                    case 'ls':
+                        commands = self.ls(bits[1])
+                    case 'cd':
+                        commands = self.cd(bits[1])
+                    case 'rm':
+                        commands = self.rm(bits[1:])
+                    case 'mv':
+                        commands = self.mv(bits[1:])
+                    case 'mb':
+                        commands= self.mb(bits[1])
+                    case _:
+                        click.echo(_i('Command Not Understood'))
+            
     def cb(self, bucket):
         """
         Change to a (new) bucket
@@ -134,16 +154,17 @@ class PsuedoFileSystem:
             click.echo(_p('Location') + f': {self.alias}')
             click.echo(_p('Available Buckets') + f': {" ".join(self.buckets)}')
             commands = ['cb','mb','exit']
-            self._next(commands)
+            return commands
         if bucket not in self.buckets:
             click.echo(_p(f'Bucket [{bucket}] does not exist'))
-            self.cb(None)
+            return 
         else:
             self.bucket = bucket
             volume, nfiles, ndirs, mydirs, myfiles = self._recurse('')
             click.echo(_i('Bucket: ') + bucket + _i(' contains ')+ fmt_size(volume) + _i(' in ') + str(nfiles) + _i(' files/objects.'))
         commands = ['cb','cd','exit']
-        self._next(commands)
+        return commands
+        
 
     def cd(self,path):
         """
@@ -158,7 +179,12 @@ class PsuedoFileSystem:
                 path = '/'.join(bits)
         if path != '' and not path.endswith('/'):
             path+='/'
+        return self._cd_lander(path)
         
+    def _cd_lander(self, path):
+        """
+        This internal routine reports information about a particular path
+        """
         self.path = path
         volume, nfiles, ndirs, mydirs, myfiles = self._recurse(path)
         if path == '':
@@ -168,7 +194,7 @@ class PsuedoFileSystem:
         if len(mydirs) > 0:
             click.echo(_i('Sub-directories are : ')+_e(' '.join([f'{d[0]}({d[1]})' for d in mydirs])))
         commands = ['ls','cd','cb','exit']
-        self._next(commands)
+        return commands
 
     def ls(self, extras):
         """ 
@@ -194,7 +220,7 @@ class PsuedoFileSystem:
         if len(mydirs) > 0:  
             click.echo(_i('Sub-directories are : ')+_e(' '.join([f'{d[0]}({d[1]})' for d in mydirs])))   
         commands = ['ls','cd','cb','exit','rm','mv']
-        self._next(commands)
+        return commands
     
     def rm(self, extras):
         """ 
@@ -204,7 +230,7 @@ class PsuedoFileSystem:
         path = self.path + ''.join(extras)
         objects = lswild(self.client, self.bucket, path)
         rm(self.client, self.bucket, objects)
-        self.cd(path)
+        return self.cd(path)
 
     def mb(self, bucket_name):
         """ 
@@ -219,7 +245,7 @@ class PsuedoFileSystem:
             self.cb(None)
         r = self.client.make_bucket(bucket_name)
         self.buckets.append(bucket_name)
-        self.cb(bucket_name)
+        return self.cb(bucket_name)
 
 
     def mv(self, command):
@@ -231,7 +257,7 @@ class PsuedoFileSystem:
             source, target = tuple(command)
         except:
             click.echo(_p('Invalid mv command'))
-            self.cd(self.path)
+            return self.cd(self.path)
 
         if target.startswith('/'):
             target_bucket = self.bucket
@@ -239,7 +265,7 @@ class PsuedoFileSystem:
             bits = target.split('/')
             if bits[0] not in self.buckets:
                 click.echo(_p('Invalid mv command: target must start with a bucket name or /'))
-                self.cd(self.path)
+                return self.cd(self.path)
             target_bucket = bits[0]
 
         if target.endswith('/'):
@@ -247,7 +273,7 @@ class PsuedoFileSystem:
         else:
             if source.find('*') > -1 or source.endswith('/'):
                 click.echo(_p('Cannot move multiple files to a target that is not a directory'))
-                self.cd(self.path)
+                return self.cd(self.path)
                 singleton= True
 
 
@@ -256,7 +282,7 @@ class PsuedoFileSystem:
         if singleton:
             if len(objects) != 1:
                 click.echo(_p('Unexpected error cannot mv multiple files to one file'))
-                self.cd(self.path)
+                return self.cd(self.path)
             targets = [target]
         else:
             targets = [f'{target}/{o.object_name}' for o in objects]
@@ -279,5 +305,4 @@ class PsuedoFileSystem:
                 self.client.remove_object(self.bucket,o.object_name)
                 click.echo(f'Created {_e(result.object_name)}')
             
-    
-        self.cd(self.path)
+        return self.cd(self.path)
