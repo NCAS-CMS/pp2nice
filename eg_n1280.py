@@ -72,6 +72,12 @@ simulations = {
         'u-ck778':'r3i1p1f1',
 }
 
+# Metadata attributes for the S3 version,
+# We will also automatically add
+# standard_name, long_name, shape, and chunk_shape 
+user_metadata = experiment_detail
+
+
 ### Output Location
 # Leave blank if you want it to be in the working directory from where this is run!
 

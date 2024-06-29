@@ -71,8 +71,6 @@ def get_frequency_attribute(f):
     return ti
 
 
-
-
 def pp2nc_from_config(cc, config_file, task_number, 
                         target=None, bucket=None, 
                         logging=False, dummy_run=False):
@@ -120,6 +118,11 @@ def pp2nc_from_config(cc, config_file, task_number,
             chunk_shape = get_chunkshape(np.array(f.data.shape), configuration['storage_options']['chunksize'])
             # yes, the method has the wrong name
             f.data.nc_set_hdf5_chunksizes(chunk_shape)
+        user_metadata = configuration['user_metadata']
+        for k in ['standard_name','long_name','shape']:
+            user_metadata[k] = f[k]
+        user_metadata['chunk_shape'] = chunk_shape
+        print(user_metadata)
         print(global_attributes)
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
         print('\nWriting: ', ss)
@@ -164,8 +167,8 @@ def pp2nc_from_config(cc, config_file, task_number,
             print(f"... file {ss} written {e3b-e3a:.1f}")
             if ss1 != '': 
                 os.remove(ss1)
-            if bucket is not None and target is not None:
-                move_to_s3(ss, target, bucket)
+            if bucket is not None and target is not None:    
+                move_to_s3(ss, target, bucket, metadata=user_metadata)
                 e3c = time()
                 print(f'...file moved to s3 in {e3c-e3b:.1f}s')
     e3 = time()
@@ -179,6 +182,6 @@ if __name__ == "__main__":
     config_file = 'n1280_processing_v1.json'
     print(f"Using task {task_number} from {config_file}")
     pp2nc_from_config(cc, config_file, task_number, 
-                    target ='hpos', bucket='bnl',
+                    target ='hrs3', bucket='hrcm',
                     logging=True, dummy_run=False)
     
