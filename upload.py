@@ -1,13 +1,14 @@
 from pathlib import Path
 from minio import Minio
-from s3core import get_user_config
+from s3v.s3core import get_user_config
 import os
 import tempfile
 import numpy as np
+import pytest
 
 
 
-def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, verify=False):
+def minio_upload(file_path, credentials, bucket, metadata=None, secure=True, object_name=None, verify=False):
 
     """ 
     Upload the POSIX file at path to the bucket using the minio 
@@ -21,6 +22,7 @@ def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, 
     If you request verification, in principle we can test if the
     uploaded file is the same as on disk, but at the momement we 
     can't do that properly.
+    We can upload user metadata key value pairs if provided as dictionary
     """
     try:
         api = {'endpoint':'url','access_key':'accessKey','secret_key':'secretKey'}
@@ -51,16 +53,16 @@ def minio_upload(file_path, credentials, bucket, secure=True, object_name=None, 
 
     #upload
     try:
-        result = client.fput_object(bucket, object_name, file_path)
+        result = client.fput_object(bucket, object_name, file_path, metadata=metadata)
         etag = result.etag
         if do_verify:
             size = Path(file_path).stat().st_size
-            do_verify(size, etag, client, bucket, object_name)
+            do_verify(size, etag, client, bucket, object_name, metadata)
     except:
         raise
 
 
-def move_to_s3(file_path, target, bucket, testfail=False):
+def move_to_s3(file_path, target, bucket, metadata=None, testfail=False):
     """
     Move <file_path> to <bucket> at the minio <target> (from
     your credential file). NOTE THAT THE FILE AT FILE_PATH
@@ -74,7 +76,7 @@ def move_to_s3(file_path, target, bucket, testfail=False):
     if credentials['url'].startswith('https'):
         secure = True
     try:
-        minio_upload(file_path, credentials, bucket, secure=secure)
+        minio_upload(file_path, credentials, bucket, secure=secure, metadata=metadata)
         if testfail:
             raise RuntimeError('Testing failure required')
         os.remove(file_path)
@@ -82,7 +84,7 @@ def move_to_s3(file_path, target, bucket, testfail=False):
         raise RuntimeError('Unexpected issue with S3 copy. POSIX file not deleted')
 
 
-def do_verify(file_size, etag, client, bucket, object_name):
+def do_verify(file_size, etag, client, bucket, object_name, metadata):
     """ 
     Ideally we verify the file is correct by first checkging the size in bytes
     and then we can try and work out whether or not the etag is correct. But the
@@ -96,8 +98,13 @@ def do_verify(file_size, etag, client, bucket, object_name):
     print(f'Warning - Cannot verify using checksums - but at least file sizes do match for: {object_name}!')
     # see this useful stackoverflow: 
     # https://stackoverflow.com/questions/62555047/how-is-the-minio-etag-generated
+    if metadata is not None:
+        ometa = {k[11:]:v for k,v in result.metadata.items() if k.startswith('x-amz-meta')}
+        ometa = sorted(ometa)
+        umeta = sorted(metadata)
+        if ometa != umeta:
+            raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa}')
 
-    
 def test_move_fail(target="hpos", bucket="bnl", secure=False):
     """
     Test that move and delete does what you think it will do
@@ -108,10 +115,11 @@ def test_move_fail(target="hpos", bucket="bnl", secure=False):
         data = np.ones(size)
         data.tofile(fp)
         fname = fp.name
-        move_to_s3(fname, target, bucket, testfail=True)
-        assert os.path.exists(fname)
         fp.file.close()
-    
+        with pytest.raises(RuntimeError):
+            move_to_s3(fname, target, bucket, testfail=True)
+        assert os.path.exists(fname)
+         
 
 def test_move_succeed(target="hpos", bucket="bnl", secure=False):
     """
@@ -137,10 +145,21 @@ def testme(target="hpos", bucket="bnl", secure=True):
         secure=secure,
         object_name = 'test_file_delete_at_whenever.py'
         )
+    
+def test_move_metadata(target='hpos', bucket='bnl',secure=False):
+    size = 1024
+    with tempfile.NamedTemporaryFile("w",delete=False) as fp:
+        data = np.ones(size)
+        data.tofile(fp)
+        fname = fp.name
+        move_to_s3(fname, target, bucket, metadata={'meta':'test','emeta':'test2'}, testfail=False)
+        assert not os.path.exists(fname)
+        fp.file.close()    
 
 
 if __name__=="__main__":
 
     test_move_succeed()
     test_move_fail()
+    test_move_metadata()
 
