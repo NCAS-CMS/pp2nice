@@ -101,6 +101,7 @@ if __name__ == "__main__":
         'experiment_detail': experiment_detail,
         'output_location': output_location,
         'simulations': simulations,
+	'user_metadata': user_metadata,
         'tasks':[]
     }
 
