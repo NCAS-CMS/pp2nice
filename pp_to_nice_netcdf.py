@@ -120,7 +120,7 @@ def pp2nc_from_config(cc, config_file, task_number,
             f.data.nc_set_hdf5_chunksizes(chunk_shape)
         user_metadata = configuration['user_metadata']
         for k in ['standard_name','long_name','shape']:
-            user_metadata[k] = f[k]
+            user_metadata[k] = getattr(f,k)
         user_metadata['chunk_shape'] = chunk_shape
         print(user_metadata)
         print(global_attributes)
