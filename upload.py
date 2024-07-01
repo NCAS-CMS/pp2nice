@@ -62,7 +62,7 @@ def minio_upload(file_path, credentials, bucket, metadata=None, secure=True, obj
         raise
 
 
-def move_to_s3(file_path, target, bucket, metadata=None, testfail=False):
+def move_to_s3(file_path, target, bucket, user_metadata=None, testfail=False):
     """
     Move <file_path> to <bucket> at the minio <target> (from
     your credential file). NOTE THAT THE FILE AT FILE_PATH
@@ -76,7 +76,7 @@ def move_to_s3(file_path, target, bucket, metadata=None, testfail=False):
     if credentials['url'].startswith('https'):
         secure = True
     try:
-        minio_upload(file_path, credentials, bucket, secure=secure, metadata=metadata)
+        minio_upload(file_path, credentials, bucket, secure=secure, metadata=user_metadata)
         if testfail:
             raise RuntimeError('Testing failure required')
         os.remove(file_path)
