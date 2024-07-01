@@ -5,6 +5,7 @@ import json
 import os
 import numpy as np
 from upload import move_to_s3
+from s3v.s3core import sanitise_metadata
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_chunkshape
@@ -168,10 +169,13 @@ def pp2nc_from_config(cc, config_file, task_number,
             if ss1 != '': 
                 os.remove(ss1)
             if bucket is not None and target is not None: 
-                try:  
+                try:
+                    user_metadata = sanitise_metadata(user_metadata)
                     move_to_s3(ss, target, bucket, user_metadata=user_metadata)
                 except Exception as e:
-                    print(f'Faiied transfer to S3: {e}')
+                    print(f'Failed transfer to S3: {e}')
+                    with open('user_metadata_at_crash.json','w') as ff:
+                        json.dump(user_metadata,ff)
                     raise
                 e3c = time()
                 print(f'...file moved to s3 in {e3c-e3b:.1f}s')
