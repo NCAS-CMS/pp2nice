@@ -5,6 +5,7 @@ import os
 import tempfile
 import numpy as np
 import pytest
+import time
 
 
 
@@ -39,7 +40,7 @@ def minio_upload(file_path, credentials, bucket, metadata=None, secure=True, obj
     except:
         raise
     if object_name is None:
-        object_name = Path(file_path).stem
+        object_name = Path(file_path).name
     
     #make the bucket if it does not exist
     try:
@@ -62,7 +63,7 @@ def minio_upload(file_path, credentials, bucket, metadata=None, secure=True, obj
         raise
 
 
-def move_to_s3(file_path, target, bucket, metadata=None, testfail=False):
+def move_to_s3(file_path, target, bucket, user_metadata=None, testfail=False, logging=True):
     """
     Move <file_path> to <bucket> at the minio <target> (from
     your credential file). NOTE THAT THE FILE AT FILE_PATH
@@ -76,9 +77,13 @@ def move_to_s3(file_path, target, bucket, metadata=None, testfail=False):
     if credentials['url'].startswith('https'):
         secure = True
     try:
-        minio_upload(file_path, credentials, bucket, secure=secure, metadata=metadata)
+        e1 = time.time()
+        minio_upload(file_path, credentials, bucket, secure=secure, metadata=user_metadata)
         if testfail:
             raise RuntimeError('Testing failure required')
+        e2 = time.time() - e1
+        if logging:
+            print(f'Upload of {file_path} took {e2:.1}s')
         os.remove(file_path)
     except:
         raise RuntimeError('Unexpected issue with S3 copy. POSIX file not deleted')
@@ -152,7 +157,7 @@ def test_move_metadata(target='hpos', bucket='bnl',secure=False):
         data = np.ones(size)
         data.tofile(fp)
         fname = fp.name
-        move_to_s3(fname, target, bucket, metadata={'meta':'test','emeta':'test2'}, testfail=False)
+        move_to_s3(fname, target, bucket, user_metadata={'meta':'test','emeta':'test2'}, testfail=False)
         assert not os.path.exists(fname)
         fp.file.close()    
 
