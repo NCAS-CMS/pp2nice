@@ -169,7 +169,7 @@ def pp2nc_from_config(cc, config_file, task_number,
                 os.remove(ss1)
             if bucket is not None and target is not None: 
                 try:  
-                    move_to_s3(ss, target, bucket, metadata=user_metadata)
+                    move_to_s3(ss, target, bucket, user_metadata=user_metadata)
                 except Exception as e:
                     print(f'Faiied transfer to S3: {e}')
                     raise
