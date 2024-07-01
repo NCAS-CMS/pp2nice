@@ -45,9 +45,7 @@ experiment_detail = {
     'ENSEMBLE_TYPE':        'Perturbed stochastic physics',
     'realm':                'atmos',
     'grid_label':           'gn',
-    'NOTES':    [
-                    "Not formally part of HighResMIP but conforming to the protocol"
-                ]
+    'NOTES':    "Not formally part of HighResMIP but conforming to the protocol",
 }
 # check mandatory keys exist
 for x in ['project','experiment','further_info_url_base','source_id','nominal_resolution']:

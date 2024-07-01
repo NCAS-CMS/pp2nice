@@ -120,9 +120,10 @@ def pp2nc_from_config(cc, config_file, task_number,
             # yes, the method has the wrong name
             f.data.nc_set_hdf5_chunksizes(chunk_shape)
         user_metadata = configuration['user_metadata']
-        for k in ['standard_name','long_name','shape']:
+        for k in ['standard_name','long_name']: 
             user_metadata[k] = getattr(f,k)
-        user_metadata['chunk_shape'] = chunk_shape
+        user_metadata['chunk_shape'] = str(chunk_shape)
+        user_metadata['shape'] = str(f.shape)
         print(user_metadata)
         print(global_attributes)
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
