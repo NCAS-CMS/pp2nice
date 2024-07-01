@@ -1,6 +1,6 @@
 from pathlib import Path
 from minio import Minio
-from s3v.s3core import get_user_config
+from s3v.s3core import get_user_config, sanitised_metadata
 import os
 import tempfile
 import numpy as np
@@ -105,8 +105,8 @@ def do_verify(file_size, etag, client, bucket, object_name, metadata):
     # https://stackoverflow.com/questions/62555047/how-is-the-minio-etag-generated
     if metadata is not None:
         ometa = {k[11:]:v for k,v in result.metadata.items() if k.startswith('x-amz-meta')}
-        ometa = sorted(ometa)
-        umeta = sorted(metadata)
+        ometa = sanitised_metadata(sorted(ometa))
+        umeta = sanitised_metadata(sorted(metadata))
         if ometa != umeta:
             raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa}')
 
