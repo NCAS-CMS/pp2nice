@@ -83,7 +83,7 @@ def move_to_s3(file_path, target, bucket, user_metadata=None, testfail=False, lo
             raise RuntimeError('Testing failure required')
         e2 = time.time() - e1
         if logging:
-            print(f'Upload of {file_path} took {e2:.1}s')
+            print(f'Upload of {file_path} took {e2:.1f}s')
         os.remove(file_path)
     except:
         raise RuntimeError('Unexpected issue with S3 copy. POSIX file not deleted')
