@@ -77,7 +77,8 @@ def move_to_s3(file_path, target, bucket, user_metadata=None, testfail=False, lo
     if credentials['url'].startswith('https'):
         secure = True
     try:
-        minio_upload(file_path, credentials, bucket, secure=secure, metadata=metadata)
+        e1 = time.time()
+        minio_upload(file_path, credentials, bucket, secure=secure, metadata=user_metadata)
         if testfail:
             raise RuntimeError('Testing failure required')
         e2 = time.time() - e1
