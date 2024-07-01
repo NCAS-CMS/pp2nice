@@ -167,8 +167,12 @@ def pp2nc_from_config(cc, config_file, task_number,
             print(f"... file {ss} written {e3b-e3a:.1f}")
             if ss1 != '': 
                 os.remove(ss1)
-            if bucket is not None and target is not None:    
-                move_to_s3(ss, target, bucket, metadata=user_metadata)
+            if bucket is not None and target is not None: 
+                try:  
+                    move_to_s3(ss, target, bucket, metadata=user_metadata)
+                except Exception as e:
+                    print(f'Faiied transfer to S3: {e}')
+                    raise
                 e3c = time()
                 print(f'...file moved to s3 in {e3c-e3b:.1f}s')
     e3 = time()
