@@ -1,6 +1,6 @@
 from pathlib import Path
 from minio import Minio
-from s3v.s3core import get_user_config, sanitise_metadata
+from s3v.s3core import get_user_config, sanitise_metadata, desanitise_metadata
 import os
 import tempfile
 import numpy as np
@@ -54,6 +54,8 @@ def minio_upload(file_path, credentials, bucket, metadata=None, secure=True, obj
 
     #upload
     try:
+        if metadata is not None:
+            metadata = sanitise_metadata(metadata)
         result = client.fput_object(bucket, object_name, file_path, metadata=metadata)
         etag = result.etag
         if do_verify:
@@ -105,11 +107,14 @@ def do_verify(file_size, etag, client, bucket, object_name, metadata):
     # https://stackoverflow.com/questions/62555047/how-is-the-minio-etag-generated
     if metadata is not None:
         ometa = {k[11:]:v for k,v in result.metadata.items() if k.startswith('x-amz-meta')}
-        ometa = sanitise_metadata(ometa)
-        umeta = sanitise_metadata(metadata)
+        ometa = desanitise_metadata(ometa)
+        umeta = desanitise_metadata(metadata)
         for k in ometa:
-            if ometa[k]!=umeta[k]: 
-                raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa}')
+            try:
+                if ometa[k]!=umeta[k]: 
+                    raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa}')
+            except KeyError as e:
+                raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa} (error{e})')
 
 def test_move_fail(target="hpos", bucket="bnl", secure=False):
     """
