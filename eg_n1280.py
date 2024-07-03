@@ -45,7 +45,7 @@ experiment_detail = {
     'ENSEMBLE_TYPE':        'Perturbed stochastic physics',
     'realm':                'atmos',
     'grid_label':           'gn',
-    'NOTES':    "Not formally part of HighResMIP but conforming to the protocol",
+    'notes':    "Not formally part of HighResMIP but conforming to the protocol",
 }
 # check mandatory keys exist
 for x in ['project','experiment','further_info_url_base','source_id','nominal_resolution']:
@@ -70,10 +70,10 @@ simulations = {
         'u-ck778':'r3i1p1f1',
 }
 
-# Metadata attributes for the S3 version,
-# We will also automatically add
+# Additional metadata attributes for the S3 version,
+# We will also automatically add the global attributes, 
 # standard_name, long_name, shape, and chunk_shape 
-user_metadata = experiment_detail
+user_metadata = {}
 
 
 ### Output Location

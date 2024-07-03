@@ -1,5 +1,6 @@
 import cf
 from time import time
+import datetime
 from uuid import uuid4
 import json
 import os
@@ -95,6 +96,8 @@ def pp2nc_from_config(cc, config_file, task_number,
     urldetails = [configuration['experiment_detail'][x] for x in 
                     ['project','experiment','further_info_url_base']]
     global_attributes['further_info_url'] = f'{urldetails[2]}/{urldetails[0]}/{urldetails[1]}'
+    today = datetime.date.today().strfrmtime('%Y-%m-%d')
+    global_attributes['processing'] = f'pp_to_nice_netcdf:{today}.'
     del global_attributes['further_info_url_base']
 
     if logging:
@@ -123,8 +126,8 @@ def pp2nc_from_config(cc, config_file, task_number,
             user_metadata[k] = getattr(f,k)
         user_metadata['chunk_shape'] = str(chunk_shape)
         user_metadata['shape'] = str(f.shape)
-        print(user_metadata)
-        print(global_attributes)
+        for k,v in global_attributes.items():
+            user_metadata[k]=v
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
         print('\nWriting: ', ss)
         if dummy_run:
