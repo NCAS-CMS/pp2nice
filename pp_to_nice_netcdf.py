@@ -124,8 +124,8 @@ def pp2nc_from_config(cc, config_file, task_number,
         user_metadata = configuration['user_metadata']
         for k in ['standard_name','long_name']: 
             user_metadata[k] = getattr(f,k)
-        user_metadata['chunk_shape'] = str(chunk_shape)
-        user_metadata['shape'] = str(f.shape)
+        user_metadata['chunk_shape'] = f'{str(chunk_shape)}/{str(f.shape)}'
+        user_metadata['domain'] = f.domain.__repr__()[13:-2]
         for k,v in global_attributes.items():
             user_metadata[k]=v
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
