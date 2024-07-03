@@ -96,7 +96,7 @@ def pp2nc_from_config(cc, config_file, task_number,
     urldetails = [configuration['experiment_detail'][x] for x in 
                     ['project','experiment','further_info_url_base']]
     global_attributes['further_info_url'] = f'{urldetails[2]}/{urldetails[0]}/{urldetails[1]}'
-    today = datetime.date.today().strfrmtime('%Y-%m-%d')
+    today = datetime.date.today().strftime('%Y-%m-%d')
     global_attributes['processing'] = f'pp_to_nice_netcdf:{today}.'
     del global_attributes['further_info_url_base']
 
