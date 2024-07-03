@@ -112,9 +112,9 @@ def do_verify(file_size, etag, client, bucket, object_name, metadata):
         for k in ometa:
             try:
                 if ometa[k]!=umeta[k]: 
-                    raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa}')
+                    raise RuntimeError(f'Metadata not preserved - u{umeta} - o {ometa}')
             except KeyError as e:
-                raise RuntimeError('Metadata not preserved - u{umeta} - o {ometa} (error{e})')
+                raise RuntimeError(f'Metadata not preserved - u{umeta} - o {ometa} (error{e})')
 
 def test_move_fail(target="hpos", bucket="bnl", secure=False):
     """
@@ -163,7 +163,7 @@ def test_move_metadata(target='hpos', bucket='bnl',secure=False):
         data = np.ones(size)
         data.tofile(fp)
         fname = fp.name
-        move_to_s3(fname, target, bucket, user_metadata={'meta':'test','emeta':'test2'}, testfail=False)
+        move_to_s3(fname, target, bucket, user_metadata={'META':'test','emeta':'test2'}, testfail=False)
         assert not os.path.exists(fname)
         fp.file.close()    
 
