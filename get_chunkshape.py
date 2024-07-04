@@ -1,6 +1,66 @@
 import numpy as np
 import math
 
+def get_optimal_chunkshape(f, volume, word_size=4,logging=False):
+    """ 
+    Given a CF field, f get an optimal chunk shape using knowledge about the various dimensions.
+    Our working assumption is that we want to have, for
+     - hourly data, chunk shapes which are multiples of 12 in the time dimension
+     - sub-daily data, chunk shapes which divide into a small multiple of 24
+     - daily data, chunk shapes which are a multiple of 10
+     - monthly data, chunk shapes which are a multiple of 12
+    """
+
+    t_axis = f.coordinate('T')
+    t_data = t_axis.get_data()
+    interval ='u'
+    if len(t_data)> 1:
+        t_delta = (t_data[1]-t_data[0]).array[0]
+        t_units = t_axis.units
+        if t_units.startswith('days'):
+            if t_delta < 1:
+                t_delta = round(t_delta*24)
+                if t_delta == 1:
+                    interval = 'h'
+                else:
+                    interval = int(24/t_delta)
+            elif t_delta == 1:
+                interval = 'd'
+            else:
+                interval = 'm'
+
+    default = get_chunkshape(np.array(f.data.shape), volume, word_size, logging)
+    coords = [c.identity() for k,c in f.coordinates(todict=True).items()]
+
+    try:
+        index = coords.index('time')
+        guess = default[index]
+        match interval:
+            case 'h':
+                if guess < 3:
+                     default[index] = 2
+                elif guess < 6:
+                     default[index] = 4
+                elif guess < 12:
+                     default[index] = 6
+                elif guess < 19:
+                     default[index] = 12
+                else:
+                    default[index] = round(guess/24)*24
+            case 'd':
+                default[index] = round(guess/10)*10
+            case 'm':
+                default[index] = round(guess/12)*12       
+            case 'u':
+                pass
+            case _:
+                default[index] = int(guess/interval)*interval
+        if guess != default[index]:
+            print(f'Time chunk changed from {guess} to {default[index]}')
+    except ValueError:
+        pass
+    return default
+
 def get_chunkshape(shape, volume, word_size=4, logging=False, scale_tol=0.8):
     """
     Given a shape tuple, and byte size for the elements, calculate a suitable chunk shape

@@ -8,7 +8,7 @@ import numpy as np
 from upload import move_to_s3
 
 from common_concept import CommonConcepts
-from get_chunkshape import get_chunkshape
+from get_chunkshape import get_optimal_chunkshape
 
 def make_filename(identity, attributes,frequency,starting,length):
     """ 
@@ -118,12 +118,16 @@ def pp2nc_from_config(cc, config_file, task_number,
             pass
         else:
             f.set_property('common_name',f'cmip6:{common_concept_name}')
-            chunk_shape = get_chunkshape(np.array(f.data.shape), configuration['storage_options']['chunksize'])
+            chunk_shape = get_optimal_chunkshape(f, configuration['storage_options']['chunksize'])
+            #chunk_shape = get_optimal_chunkshape(np.array(f.data.shape), configuration['storage_options']['chunksize'])
             # yes, the method has the wrong name
             f.data.nc_set_hdf5_chunksizes(chunk_shape)
         user_metadata = configuration['user_metadata']
-        for k in ['standard_name','long_name']: 
-            user_metadata[k] = getattr(f,k)
+        for k in ['standard_name','long_name']:
+            try: 
+                user_metadata[k] = getattr(f,k)
+            except AttributeError:
+                pass
         user_metadata['chunk_shape'] = f'{str(chunk_shape)}/{str(f.shape)}'
         user_metadata['domain'] = f.domain.__repr__()[13:-2]
         for k,v in global_attributes.items():
@@ -131,7 +135,7 @@ def pp2nc_from_config(cc, config_file, task_number,
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
         print('\nWriting: ', ss)
         if dummy_run:
-            print(global_attributes)
+            print(user_metadata)
         else:
             compress = configuration['storage_options']['compress']
             shuffle = configuration['storage_options']['shuffle']
