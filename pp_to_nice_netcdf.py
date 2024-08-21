@@ -17,14 +17,16 @@ class SlurmLogger:
     Replaces python logging module which I simply cannot get to work on Slurm
     in such a way that we get output as the job runs.
     """
-    def __init__(self,format='%(asctime)s-%(funcname)s %(message)s',datefmt='%y-%b-%d %H:%M:%S'):
+    def __init__(self,format=f'%(asctime)s-%(funcname)s %(message)s',datefmt='%y-%b-%d %H:%M:%S'):
         self.format = format
         self.datefmt = datefmt
 
     def info(self,message):
         asctime = datetime.datetime.now().strftime(self.datefmt)
         funcname = inspect.stack()[1].function
-        print(self.format)
+        values = {'asctime':asctime, 'funcname':funcname, 'message': message}
+        output = self.format % values
+        print(output)
 
 
 logging = SlurmLogger()
