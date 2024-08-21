@@ -26,11 +26,11 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, logging=True, **kw):
     new_chunk[0] = 1
     if logging:
         print(f'<pp2chunkednc> Using a temp file with temp chunking {new_chunk}')
-    t1 = time.time()
+    t1 = time()
     f.data.nc_set_hdf5_chunksizes(new_chunk)
     # we try not compressing the temporary data in the hope it will speed things up
     cf.write(f, tmpfile, compress=0, shuffle=False)
-    t2 = time.time()
+    t2 = time()
     if logging:
         print(f'<pp2chunkednc> Temp file ({tmpfile}) written in {t2-t1:.2f}s')
     rechunk(tmpfile, 0, outfile, new_chunk_shape, logging=logging, **kw)
@@ -43,16 +43,16 @@ def rechunk(infile, field_number, outfile, new_chunk_shape, logging=True, **kw):
     the appropriate keywords
     """
 
-    t1 = time.time()
+    t1 = time()
     f = cf.read(infile)[field_number]
-    t2 = time.time()
+    t2 = time()
     old_chunk_shape = f.data.nc_hdf5_chunksizes
     if logging:
         print(f'<rechunk> Lazy read of {infile} (chunk shape = {old_chunk_shape}) in {t2-t1:.2f}s')
 
     f.data.nc_set_hdf5_chunksizes=new_chunk_shape
     cf.write(f, outfile, **kw)
-    t3 = time.time()
+    t3 = time()
     if logging:
         print(f'<rechunk> Wrote {outfile} with chunk_shape {new_chunk_shape} in {t3-t2:.2f}s')
 
