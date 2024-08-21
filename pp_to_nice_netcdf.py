@@ -46,7 +46,7 @@ def rechunk(infile, field_number, outfile, new_chunk_shape, logging=True, **kw):
     t1 = time()
     f = cf.read(infile)[field_number]
     t2 = time()
-    old_chunk_shape = f.data.nc_hdf5_chunksizes
+    old_chunk_shape = f.data.nc_hdf5_chunksizes()
     if logging:
         print(f'<rechunk> Lazy read of {infile} (chunk shape = {old_chunk_shape}) in {t2-t1:.2f}s')
 
