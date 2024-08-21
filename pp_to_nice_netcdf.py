@@ -227,12 +227,14 @@ if __name__ == "__main__":
     cc = CommonConcepts()
     task_number = int(os.environ['SLURM_ARRAY_TASK_ID'])
     config_file = 'n1280_processing_v1.json'
+    logfile = 'pp2nc_task{task_number:04d}.log'
+    handler = FlushingHandler(logfile)
     logging.basicConfig(format='%(asctime)s-%(funcname)s %(message)s', 
                         datefmt='%y-%b-%d %H:%M:%S',
                         level=logging.INFO,
-                        handlers=[FlushingHandler(sys.stdout)])
-    print(f"----\nUsing task {task_number} from {config_file}")
-    logging.info(f'Running on {platform.node} ({platform.machine})')
+                        handlers=[handler])
+    print(f"----\nUsing task {task_number} from {config_file} with logfile {logfile}")
+    logging.info(f'Running task {task_number} on {platform.node} ({platform.machine})')
     pp2nc_from_config(cc, config_file, task_number, 
                     target ='hrs3', bucket='hrcm',
                     dummy_run=False)
