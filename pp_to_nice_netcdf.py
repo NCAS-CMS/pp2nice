@@ -10,6 +10,54 @@ from upload import move_to_s3
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
 
+
+def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, logging=True, **kw):
+    """     
+    In this case, <f> is a field which has already been assigned a new chunk shape,
+    but it has not yet been read to memory. 
+
+    We have to deal with an horrific issue with reading pp data into chunked netcdf. 
+    Effectively we have to read the entire data many times and slice in memory. 
+    It's much faster to simply write the data out with simpler chunks and rechunk 
+    from the netcdf version  - though it's still slow!
+
+    """
+    new_chunk = list(f.data.shape)
+    new_chunk[0] = 1
+    if logging:
+        print(f'<pp2chunkednc> Using a temp file with temp chunking {new_chunk}')
+    t1 = time.time()
+    f.data.nc_set_hdf5_chunksizes(new_chunk)
+    # we try not compressing the temporary data in the hope it will speed things up
+    cf.write(f, tmpfile, compress=0, shuffle=False)
+    t2 = time.time()
+    if logging:
+        print(f'<pp2chunkednc> Temp file ({tmpfile}) written in {t2-t1:.2f}s')
+    rechunk(tmpfile, 0, outfile, new_chunk_shape, logging=logging, **kw)
+
+
+
+def rechunk(infile, field_number, outfile, new_chunk_shape, logging=True, **kw):
+    """ 
+    Read a file, rechunk a specific field, and write it out with
+    the appropriate keywords
+    """
+
+    t1 = time.time()
+    f = cf.read(infile)[field_number]
+    t2 = time.time()
+    old_chunk_shape = f.data.nc_hdf5_chunksizes
+    if logging:
+        print(f'<rechunk> Lazy read of {infile} (chunk shape = {old_chunk_shape}) in {t2-t1:.2f}s')
+
+    f.data.nc_set_hdf5_chunksizes=new_chunk_shape
+    cf.write(f, outfile, **kw)
+    t3 = time.time()
+    if logging:
+        print(f'<rechunk> Wrote {outfile} with chunk_shape {new_chunk_shape} in {t3-t2:.2f}s')
+
+
+
 def make_filename(identity, attributes,frequency,starting,length):
     """ 
     Create a suitable filename for the field.
@@ -144,30 +192,10 @@ def pp2nc_from_config(cc, config_file, task_number,
             print(f'Writing array [{f.data.shape}] with chunk shape {current_chunking}.' )
             ss1 = ""
             if current_chunking[0]!=1:
-                # We have to deal with an horrific issue with reading pp data. Effectively we have
-                # read the entire data many times and slice in memory. It's much faster to simply
-                # write the data out and rechunk from the netcdf version - though it's still
-                # slow!
-                print('Need to use temp file')
-                new_chunk = list(f.data.shape)
-                new_chunk[0] = 1
                 ss1 = ss[0:-3]+'-tmp.nc'
-                e3a1 = time()
-                if logging:
-                    print(new_chunk)
-                f.data.nc_set_hdf5_chunksizes(new_chunk)
-                # we try not compressing the temporary data in the hope it will speed things up
-                cf.write(f,ss1,compress=0, shuffle=False,
-                    file_descriptors=global_attributes)
-                e3a2 = time()
-                if logging:
-                    print(f'first temp file written {e3a2-e3a1:.1f}')
-                f = cf.read(ss1)[0]
-                f.data.nc_set_hdf5_chunksizes=current_chunking
-                e3a3 = time()
-                if logging:
-                    print(f'lazy reading temp file took {e3a3-e3a2:.1f}s')
-            cf.write(f, ss,
+                pp2chunkednc(f, ss1, ss, current_chunking, compress=compress, shuffle=shuffle, file_descriptors=global_attributes)
+            else:
+                cf.write(f, ss,
                     compress=compress, shuffle=shuffle,
                     file_descriptors=global_attributes
                     )
