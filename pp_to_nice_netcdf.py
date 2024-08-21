@@ -64,7 +64,7 @@ def make_filename(identity, attributes,frequency,starting,length):
     Note assumption that all fields have the same time duration
     """
 
-    header = "_".join([attributes[k] for k in ['source_id','variant_label','runid']])
+    header = "_".join([attributes[k] for k in ['source_id','experiment','variant_label']])
   
     sdate = starting.datetime_array[0].isoformat()
     if 'hr' in frequency:
