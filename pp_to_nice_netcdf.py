@@ -1,18 +1,35 @@
 import cf
 from time import time
 import datetime
-import logging
 from uuid import uuid4
 import json
 import os, sys
 import numpy as np
 from upload import move_to_s3
 import platform
+import inspect
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
 
+class SlurmLogger:
+    """ 
+    Replaces python logging module which I simply cannot get to work on Slurm
+    in such a way that we get output as the job runs.
+    """
+    def __init__(self,format='%(asctime)s-%(funcname)s %(message)s',datefmt='%y-%b-%d %H:%M:%S'):
+        self.format = format
+        self.datefmt = datefmt
 
+    def info(self,message):
+        asctime = datetime.datetime.now().strftime(self.datefmt)
+        funcname = inspect.stack()[1].function
+        print(self.format)
+
+
+logging = SlurmLogger()
+
+        
 def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     """     
     In this case, <f> is a field which has already been assigned a new chunk shape,
@@ -227,13 +244,7 @@ if __name__ == "__main__":
     cc = CommonConcepts()
     task_number = int(os.environ['SLURM_ARRAY_TASK_ID'])
     config_file = 'n1280_processing_v1.json'
-    logfile = f'pp2nc_task{task_number:04d}.log'
-    handler = FlushingHandler(logfile)
-    logging.basicConfig(format='%(asctime)s-%(funcname)s %(message)s', 
-                        datefmt='%y-%b-%d %H:%M:%S',
-                        level=logging.INFO,
-                        handlers=[handler])
-    print(f"----\nUsing task {task_number} from {config_file} with logfile {logfile}")
+    print(f"----\nUsing task {task_number} from {config_file}")
     logging.info(f'Running task {task_number} on {platform.node} ({platform.machine})')
     pp2nc_from_config(cc, config_file, task_number, 
                     target ='hrs3', bucket='hrcm',
