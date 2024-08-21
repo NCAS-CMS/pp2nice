@@ -7,6 +7,7 @@ import json
 import os, sys
 import numpy as np
 from upload import move_to_s3
+import platform
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
@@ -231,6 +232,7 @@ if __name__ == "__main__":
                         level=logging.INFO,
                         handlers=[FlushingHandler(sys.stdout)])
     print(f"----\nUsing task {task_number} from {config_file}")
+    logging.info(f'Running on {platform.node} ({platform.machine})')
     pp2nc_from_config(cc, config_file, task_number, 
                     target ='hrs3', bucket='hrcm',
                     dummy_run=False)
