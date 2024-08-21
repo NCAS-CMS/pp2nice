@@ -1,6 +1,7 @@
 import cf
 from time import time
 import datetime
+import logging
 from uuid import uuid4
 import json
 import os
@@ -11,7 +12,7 @@ from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
 
 
-def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, logging=True, **kw):
+def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     """     
     In this case, <f> is a field which has already been assigned a new chunk shape,
     but it has not yet been read to memory. 
@@ -24,20 +25,18 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, logging=True, **kw):
     """
     new_chunk = list(f.data.shape)
     new_chunk[0] = 1
-    if logging:
-        print(f'<pp2chunkednc> Using a temp file with temp chunking {new_chunk}')
+    logging.info(f'Using a temp file with temp chunking {new_chunk}')
     t1 = time()
     f.data.nc_set_hdf5_chunksizes(new_chunk)
     # we try not compressing the temporary data in the hope it will speed things up
     cf.write(f, tmpfile, compress=0, shuffle=False)
     t2 = time()
-    if logging:
-        print(f'<pp2chunkednc> Temp file ({tmpfile}) written in {t2-t1:.2f}s')
-    rechunk(tmpfile, 0, outfile, new_chunk_shape, logging=logging, **kw)
+    logging.info(f'Temp file ({tmpfile}) written in {t2-t1:.2f}s')
+    rechunk(tmpfile, 0, outfile, new_chunk_shape, **kw)
 
 
 
-def rechunk(infile, field_number, outfile, new_chunk_shape, logging=True, **kw):
+def rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
     """ 
     Read a file, rechunk a specific field, and write it out with
     the appropriate keywords
@@ -47,14 +46,12 @@ def rechunk(infile, field_number, outfile, new_chunk_shape, logging=True, **kw):
     f = cf.read(infile)[field_number]
     t2 = time()
     old_chunk_shape = f.data.nc_hdf5_chunksizes()
-    if logging:
-        print(f'<rechunk> Lazy read of {infile} (chunk shape = {old_chunk_shape}) in {t2-t1:.2f}s')
+    logging.info(f'Lazy read of {infile} (chunk shape = {old_chunk_shape}) in {t2-t1:.2f}s')
 
     f.data.nc_set_hdf5_chunksizes=new_chunk_shape
     cf.write(f, outfile, **kw)
     t3 = time()
-    if logging:
-        print(f'<rechunk> Wrote {outfile} with chunk_shape {new_chunk_shape} in {t3-t2:.2f}s')
+    logging.info(f'Wrote {outfile} with chunk_shape {new_chunk_shape} in {t3-t2:.2f}s')
 
 
 
@@ -122,7 +119,7 @@ def get_frequency_attribute(f):
 
 def pp2nc_from_config(cc, config_file, task_number, 
                         target=None, bucket=None, 
-                        logging=False, dummy_run=False):
+                        dummy_run=False):
     """ 
     Convert pp files to netcdf using a specifc task_number 
     from an instance of the json configuration 
@@ -148,15 +145,11 @@ def pp2nc_from_config(cc, config_file, task_number,
     global_attributes['processing'] = f'pp_to_nice_netcdf:{today}.'
     del global_attributes['further_info_url_base']
 
-    if logging:
-        print('Reading')
-        print(myfiles)
-        print('---')
+    logging.info(f'Reading {myfiles}')
     e1 = time()
     fields = cf.read(myfiles)
     e2 = time()
-    if logging:
-        print(f'\nReading completed in {e2-e1:.1f}s\n')
+    logging.info('Reading completed in {e2-e1:.1f}s')
 
     for f in fields:
         fkey = get_frequency_attribute(f)
@@ -181,7 +174,7 @@ def pp2nc_from_config(cc, config_file, task_number,
         for k,v in global_attributes.items():
             user_metadata[k]=v
         ss = make_filename(common_concept_name, global_attributes, fkey, tc[0], len(tc))
-        print('\nWriting: ', ss)
+        logging.info(f'Writing {ss}')
         if dummy_run:
             print(user_metadata)
         else:
@@ -189,7 +182,7 @@ def pp2nc_from_config(cc, config_file, task_number,
             shuffle = configuration['storage_options']['shuffle']
             e3a = time()
             current_chunking = f.data.nc_hdf5_chunksizes()
-            print(f'Writing array [{f.data.shape}] with chunk shape {current_chunking}.' )
+            logging.info(f'Writing array [{f.data.shape}] with chunk shape {current_chunking}.' )
             ss1 = ""
             if current_chunking[0]!=1:
                 ss1 = ss[0:-3]+'-tmp.nc'
@@ -200,7 +193,7 @@ def pp2nc_from_config(cc, config_file, task_number,
                     file_descriptors=global_attributes
                     )
             e3b = time()
-            print(f"... file {ss} written {e3b-e3a:.1f}")
+            logging.info(f"... file {ss} written {e3b-e3a:.1f}")
             if ss1 != '': 
                 os.remove(ss1)
             if bucket is not None and target is not None: 
@@ -212,18 +205,18 @@ def pp2nc_from_config(cc, config_file, task_number,
                         json.dump(user_metadata,ff)
                     raise
                 e3c = time()
-                print(f'...file moved to s3 in {e3c-e3b:.1f}s')
+                logging.info(f'...file moved to s3 in {e3c-e3b:.1f}s')
     e3 = time()
-    if logging:
-        print(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
+    logging.info(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
 
 
 if __name__ == "__main__":
     cc = CommonConcepts()
     task_number = int(os.environ['SLURM_ARRAY_TASK_ID'])
     config_file = 'n1280_processing_v1.json'
-    print(f"Using task {task_number} from {config_file}")
+    logging.basicConfig(format='%(asctime)s-%(funcname)s %(message)s', datefmt='%y-%b-%d %H:%M:%S',level=logging.INFO)
+    print(f"----\nUsing task {task_number} from {config_file}")
     pp2nc_from_config(cc, config_file, task_number, 
                     target ='hrs3', bucket='hrcm',
-                    logging=True, dummy_run=False)
+                    dummy_run=False)
     
