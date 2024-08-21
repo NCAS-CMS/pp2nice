@@ -11,6 +11,7 @@ def get_optimal_chunkshape(f, volume, word_size=4,logging=False):
      - monthly data, chunk shapes which are a multiple of 12
     """
 
+    default = get_chunkshape(np.array(f.data.shape), volume, word_size, logging)
     t_axis = f.coordinate('T')
     t_data = t_axis.get_data()
     interval ='u'
@@ -29,11 +30,9 @@ def get_optimal_chunkshape(f, volume, word_size=4,logging=False):
             else:
                 interval = 'm'
 
-    default = get_chunkshape(np.array(f.data.shape), volume, word_size, logging)
-    coords = [c.identity() for k,c in f.coordinates(todict=True).items()]
-
     try:
-        index = coords.index('time')
+        T = f.domain_axis('T', key=True)
+        index = f.get_data_axes().index(T)
         guess = default[index]
         match interval:
             case 'h':
