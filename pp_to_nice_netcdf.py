@@ -228,18 +228,6 @@ def pp2nc_from_config(cc, config_file, task_number,
     logging.info(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
 
 
-class FlushingHandler(logging.FileHandler):
-    """ 
-    Used to force immediate logging in slurm output logs. Needed because
-    if jobs fail, the logging buffer may not get written at all. It's 
-    also useful for monitoring job progress.
-    (The loggin module uses its own buffering system that is independent 
-    of the Python interpreter's buffering)
-    """
-    def emit(self, record):
-        super().emit(record)
-        self.flush()
-
 if __name__ == "__main__":
     cc = CommonConcepts()
     task_number = int(os.environ['SLURM_ARRAY_TASK_ID'])
