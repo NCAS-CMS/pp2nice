@@ -29,7 +29,7 @@ class SlurmLogger:
         values = {'asctime':asctime, 'funcname':funcname, 'message': message}
         if message[-1:]=='\n':
             # the message wanted a blank line, we should honour that
-            message=message[0:-1]
+            values['message']=message[0:-1]
             output = self.format % values + '\n'
         else:
             output = self.format % values
