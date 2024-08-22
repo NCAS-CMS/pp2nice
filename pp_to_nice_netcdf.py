@@ -27,7 +27,12 @@ class SlurmLogger:
         asctime = datetime.datetime.now().strftime(self.datefmt)
         funcname = inspect.stack()[1].function
         values = {'asctime':asctime, 'funcname':funcname, 'message': message}
-        output = self.format % values
+        if message[-1:]=='\n':
+            # the message wanted a blank line, we should honour that
+            message=message[0:-1]
+            output = self.format % values + '\n'
+        else:
+            output = self.format % values
         print(output)
 
 
