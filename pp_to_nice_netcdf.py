@@ -50,8 +50,9 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     logging.info(f'Using a temp file with temp chunking {new_chunk}')
     t1 = time()
     f.data.nc_set_hdf5_chunksizes(new_chunk)
-    # we try not compressing the temporary data in the hope it will speed things up
-    cf.write(f, tmpfile, compress=0, shuffle=False)
+    # ideally we try not compressing the temporary data in the hope it will speed things up
+    # but we need to compress to get chunking because of an netcdf issue for which there is a CF PR.
+    cf.write(f, tmpfile, compress=1, shuffle=False)
     t2 = time()
     logging.info(f'Temp file ({tmpfile}) written in {t2-t1:.2f}s')
     rechunk(tmpfile, 0, outfile, new_chunk_shape, **kw)
