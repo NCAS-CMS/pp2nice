@@ -8,6 +8,7 @@ import numpy as np
 from upload import move_to_s3
 import platform
 import inspect
+from collections import dequeue
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
@@ -15,9 +16,10 @@ from get_chunkshape import get_optimal_chunkshape
 class SlurmLogger:
     """ 
     Replaces python logging module which I simply cannot get to work on Slurm
-    in such a way that we get output as the job runs.
+    in such a way that we get output as the job runs. I tried FileHandlers
+    with flush, and StreamHandlers with flush, and nada ... this works.
     """
-    def __init__(self,format=f'%(asctime)s [[%(funcname)s]] %(message)s',datefmt='%y-%b-%d %H:%M:%S'):
+    def __init__(self,format=f'%(asctime)s:  %(message)s [[%(funcname)s]]',datefmt='%y-%b-%d %H:%M:%S'):
         self.format = format
         self.datefmt = datefmt
 
@@ -171,7 +173,10 @@ def pp2nc_from_config(cc, config_file, task_number,
     e2 = time()
     logging.info('Reading completed in {e2-e1:.1f}s')
 
-    for f in reversed(fields):
+    # get rid of each field as it is done.
+    queue = dequeue(fields)
+    while queue:
+        f = queue.popleft()
         fkey = get_frequency_attribute(f)
         tc = f.coordinate('T').data
         common_concept_name = cc.identify(f)
@@ -225,7 +230,7 @@ def pp2nc_from_config(cc, config_file, task_number,
                         json.dump(user_metadata,ff)
                     raise
                 e3c = time()
-                logging.info(f'...file moved to s3 in {e3c-e3b:.1f}s')
+                logging.info(f'...file moved to s3 in {e3c-e3b:.1f}s\n')
     e3 = time()
     logging.info(f'\nWriting {len(fields)} files took {e3-e2:.1f}s\n')
 
@@ -235,7 +240,7 @@ if __name__ == "__main__":
     task_number = int(os.environ['SLURM_ARRAY_TASK_ID'])
     config_file = 'n1280_processing_v1.json'
     print(f"----\nUsing task {task_number} from {config_file}")
-    logging.info(f'Running task {task_number} on {platform.node} ({platform.machine})')
+    logging.info(f'Running task {task_number} on {platform.node()} ({platform.machine()})')
     pp2nc_from_config(cc, config_file, task_number, 
                     target ='hrs3', bucket='hrcm',
                     dummy_run=False)
