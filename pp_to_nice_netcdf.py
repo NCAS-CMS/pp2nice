@@ -17,7 +17,7 @@ class SlurmLogger:
     Replaces python logging module which I simply cannot get to work on Slurm
     in such a way that we get output as the job runs.
     """
-    def __init__(self,format=f'%(asctime)s-%(funcname)s %(message)s',datefmt='%y-%b-%d %H:%M:%S'):
+    def __init__(self,format=f'%(asctime)s [[%(funcname)s]] %(message)s',datefmt='%y-%b-%d %H:%M:%S'):
         self.format = format
         self.datefmt = datefmt
 
@@ -171,7 +171,7 @@ def pp2nc_from_config(cc, config_file, task_number,
     e2 = time()
     logging.info('Reading completed in {e2-e1:.1f}s')
 
-    for f in fields:
+    for f in reversed(fields):
         fkey = get_frequency_attribute(f)
         tc = f.coordinate('T').data
         common_concept_name = cc.identify(f)
