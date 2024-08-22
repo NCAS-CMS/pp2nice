@@ -8,7 +8,7 @@ import numpy as np
 from upload import move_to_s3
 import platform
 import inspect
-from collections import dequeue
+from collections import deque
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
@@ -174,7 +174,7 @@ def pp2nc_from_config(cc, config_file, task_number,
     logging.info('Reading completed in {e2-e1:.1f}s')
 
     # get rid of each field as it is done.
-    queue = dequeue(fields)
+    queue = deque(fields)
     while queue:
         f = queue.popleft()
         fkey = get_frequency_attribute(f)
