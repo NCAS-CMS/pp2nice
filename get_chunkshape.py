@@ -1,5 +1,13 @@
 import numpy as np
 import math
+from netCDF4 import Dataset
+
+def get_chunking_hack(filename, variable):
+
+    nc = Dataset(filename)
+    var = nc.variables[variable]
+    return var.chunking()
+
 
 def get_optimal_chunkshape(f, volume, word_size=4,logging=False):
     """ 

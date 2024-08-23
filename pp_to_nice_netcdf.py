@@ -11,7 +11,7 @@ import inspect
 from collections import deque
 
 from common_concept import CommonConcepts
-from get_chunkshape import get_optimal_chunkshape
+from get_chunkshape import get_optimal_chunkshape, get_chunking_hack
 from rechunk import rechunk
 
 class SlurmLogger:
@@ -39,7 +39,9 @@ class SlurmLogger:
 
 logging = SlurmLogger()
 
-        
+
+
+
 def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     """     
     In this case, <f> is a field which has already been assigned a new chunk shape,
@@ -63,6 +65,31 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     logging.info(f'Temp file ({tmpfile}) written in {t2-t1:.2f}s')
     rechunk(tmpfile, 0, outfile, new_chunk_shape, **kw)
 
+def rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
+    """ 
+    Read a file, rechunk a specific field, and write it out with
+    the appropriate keywords
+    """
+
+    t1 = time()
+    g = cf.read(infile)[field_number]
+    #g.data.nc_hdf5_chunksizes()
+    ncvar = g.nc_get_variable()
+    old_chunk_shape = get_chunking_hack(infile,ncvar)
+    
+    logging.info(f'Assuming dimension order T, Z, Y, X for chunkshape {old_chunk_shape}')
+    
+    dask_chunks = {k:v for k,v in zip(['T','Z','Y','X'],old_chunk_shape)}    
+    f = cf.read(infile, chunks=dask_chunks)[field_number] 
+    t2 = time()
+    
+    logging.info(f'Lazy read (twice) of {infile} (chunk shape = {old_chunk_shape}) in {t2-t1:.2f}s')
+
+    f.data.nc_set_hdf5_chunksizes=new_chunk_shape
+    cf.write(f, outfile, **kw)
+    t3 = time()
+
+    logging.info(f'Wrote {outfile} with chunk_shape {new_chunk_shape} in {t3-t2:.2f}s')
 
 
 def old_rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
