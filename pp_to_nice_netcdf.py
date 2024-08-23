@@ -12,6 +12,7 @@ from collections import deque
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape
+from rechunk import rechunk
 
 class SlurmLogger:
     """ 
@@ -64,12 +65,12 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
 
 
 
-def rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
+def old_rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
     """ 
     Read a file, rechunk a specific field, and write it out with
     the appropriate keywords
     """
-
+    # this is slow, will remove when we demonstrate the new one works better
     t1 = time()
     f = cf.read(infile)[field_number]
     t2 = time()
@@ -180,9 +181,10 @@ def pp2nc_from_config(cc, config_file, task_number,
     logging.info('Reading completed in {e2-e1:.1f}s')
 
     # get rid of each field as it is done.
-    queue = deque(fields)
-    while queue:
-        f = queue.popleft()
+    #queue = deque(fields)
+    #while queue:
+    #    f = queue.popleft()
+    for f in fields:
         fkey = get_frequency_attribute(f)
         tc = f.coordinate('T').data
         common_concept_name = cc.identify(f)

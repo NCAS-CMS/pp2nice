@@ -1,4 +1,4 @@
-import time
+from time import time
 from pp_to_nice_netcdf import SlurmLogger
 import cf
 from netCDF4 import Dataset
@@ -8,7 +8,7 @@ logging = SlurmLogger()
 def get_chunking_hack(filename, variable):
 
     nc = Dataset(filename)
-    var = nc.variable[variable]
+    var = nc.variables[variable]
     return var.chunking()
 
 
@@ -39,7 +39,7 @@ def rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
     logging.info(f'Wrote {outfile} with chunk_shape {new_chunk_shape} in {t3-t2:.2f}s')
 
 if __name__=="__main__":
-    infile= 'tmp-infile-for-repack.nc'
+    infile= 'tmp-input-for-repack.nc'
     new_shape = [8, 1, 113, 1280]
     number = 0
     outfile = 'tmp-outfile-from-rechunk.nc'
