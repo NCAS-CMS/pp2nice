@@ -12,7 +12,6 @@ from collections import deque
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape, get_chunking_hack
-from rechunk import rechunk
 
 class SlurmLogger:
     """ 
@@ -77,9 +76,16 @@ def rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
     ncvar = g.nc_get_variable()
     old_chunk_shape = get_chunking_hack(infile,ncvar)
     
-    logging.info(f'Assuming dimension order T, Z, Y, X for chunkshape {old_chunk_shape}')
+    if len(old_chunk_shape) == 3:
+        logging.info(f'Assuming dimension order T, Y, X for chunkshape {old_chunk_shape}')
+        dask_chunks = {k:v for k,v in zip(['T','Y','X'],old_chunk_shape)}    
+    elif len(old_chunk_shape) == 4:
+        logging.info(f'Assuming dimension order T, Z, Y, X for chunkshape {old_chunk_shape}')
+        dask_chunks = {k:v for k,v in zip(['T','Z','Y','X'],old_chunk_shape)}    
+    else:
+        logging.info(f'Unexpected chunk shape {old_chunk_shape}, using auto for read')
+        dask_chunks='auto'
     
-    dask_chunks = {k:v for k,v in zip(['T','Z','Y','X'],old_chunk_shape)}    
     f = cf.read(infile, chunks=dask_chunks)[field_number] 
     t2 = time()
     
