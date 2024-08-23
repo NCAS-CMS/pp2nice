@@ -3,12 +3,11 @@ from time import time
 import datetime
 from uuid import uuid4
 import json
-import os, sys
-import numpy as np
+
 from upload import move_to_s3
 import platform
 import inspect
-from collections import deque
+import subprocess
 
 from common_concept import CommonConcepts
 from get_chunkshape import get_optimal_chunkshape, get_chunking_hack
@@ -58,11 +57,40 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     t1 = time()
     f.data.nc_set_hdf5_chunksizes(new_chunk)
     # ideally we try not compressing the temporary data in the hope it will speed things up
-    # but we need to compress to get chunking because of an netcdf issue for which there is a CF PR.
-    cf.write(f, tmpfile, compress=1, shuffle=False)
+    h5_keywords = {k:v for k,v in kw.items if k in ['shuffle','compress']}
+    other_keywords={k:v for k,v in kw.items() if k not in ['shuffle','compress']}
+    print(h5_keywords, other_keywords)
+    cf.write(f, tmpfile, compress=0, shuffle=False, **other_keywords)
     t2 = time()
     logging.info(f'Temp file ({tmpfile}) written in {t2-t1:.2f}s')
-    rechunk(tmpfile, 0, outfile, new_chunk_shape, **kw)
+    #rechunk(tmpfile, 0, outfile, new_chunk_shape, **kw)
+    h5repack(tmpfile, outfile, new_chunk_shape, f.nc_get_variable(), h5_keywords)
+
+
+def h5repack(infile, outfile, new_chunk_shape, var_name, h5_keywords):
+    """
+    Hack until we can get cf-python doing this at speed
+    """
+    t1=time()
+    filters = ''
+    for k in h5_keywords:
+        match k:
+            case 'compress':
+                filters+=f'-f {var_name}:GZIP={h5_keywords[k]} '
+            case 'shuffle':
+                filters+=f'-f {var_name}:SHUF '
+            case _:
+                raise ValueError('Unknown h5repack option {k} ({h5_keywords})')
+    chunking = 'x'.join([str(s) for s in new_chunk_shape])
+    options = f'-i {infile} -o {outfile} {filters} -l {var_name}:CHUNK={chunking}'
+    logging.info(f'Command option {options}')
+    exe = subprocess.run(['h5repack', options], capture_output=True, text=True)
+    if exe.result != 0:
+        logging.info(exe.stderr)
+    logging.info(exe.stdout)
+    t2 = time()
+    logging.info(f'Repack took {t2-t1:.2f}s')
+
 
 def rechunk(infile, field_number, outfile, new_chunk_shape, **kw):
     """ 
@@ -252,7 +280,9 @@ def pp2nc_from_config(cc, config_file, task_number,
             ss1 = ""
             if current_chunking[0]!=1:
                 ss1 = ss[0:-3]+'-tmp.nc'
-                pp2chunkednc(f, ss1, ss, current_chunking, compress=compress, shuffle=shuffle, file_descriptors=global_attributes)
+                pp2chunkednc(f, ss1, ss, current_chunking, 
+                             compress=compress, shuffle=shuffle, 
+                             file_descriptors=global_attributes)
             else:
                 cf.write(f, ss,
                     compress=compress, shuffle=shuffle,
