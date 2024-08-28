@@ -3,6 +3,7 @@ from time import time
 import datetime
 from uuid import uuid4
 import json
+import os
 
 from upload import move_to_s3
 import platform
@@ -37,7 +38,24 @@ class SlurmLogger:
 
 logging = SlurmLogger()
 
-
+def fix_axes(f):
+    """ Add missing 1 dimensional height axes to pp data,
+    if indeed it is there and missing.
+    """
+    data_axes = f.get_data_axes()
+    z_axis = f.domain_axis_key('Z', default=None)
+    if z_axis:
+        if z_axis in data_axes:
+            return f
+        # assume we want Z before Y
+        try:
+            z_position = f.get_data_axes().index(f.domain_axis_key('Y'))
+        except:
+            z_position = 0
+        f.insert_dimension('Z',position=z_position,inplace=True)
+        print('New coordinates ', f.get_data_axes())
+    return f
+    
 
 
 def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
@@ -57,7 +75,7 @@ def pp2chunkednc(f, tmpfile, outfile, new_chunk_shape, **kw):
     t1 = time()
     f.data.nc_set_hdf5_chunksizes(new_chunk)
     # ideally we try not compressing the temporary data in the hope it will speed things up
-    h5_keywords = {k:v for k,v in kw.items if k in ['shuffle','compress']}
+    h5_keywords = {k:v for k,v in kw.items() if k in ['shuffle','compress']}
     other_keywords={k:v for k,v in kw.items() if k not in ['shuffle','compress']}
     print(h5_keywords, other_keywords)
     cf.write(f, tmpfile, compress=0, shuffle=False, **other_keywords)
@@ -72,21 +90,25 @@ def h5repack(infile, outfile, new_chunk_shape, var_name, h5_keywords):
     Hack until we can get cf-python doing this at speed
     """
     t1=time()
-    filters = ''
+    cmd_list = ['h5repack','-i',infile,'-o',outfile]
     for k in h5_keywords:
         match k:
             case 'compress':
-                filters+=f'-f {var_name}:GZIP={h5_keywords[k]} '
+                cmd_list.append('-f')
+                cmd_list.append(f'{var_name}:GZIP={h5_keywords[k]}')
             case 'shuffle':
-                filters+=f'-f {var_name}:SHUF '
+                cmd_list.append('-f')
+                cmd_list.append(f'{var_name}:SHUF')
             case _:
                 raise ValueError('Unknown h5repack option {k} ({h5_keywords})')
     chunking = 'x'.join([str(s) for s in new_chunk_shape])
-    options = f'-i {infile} -o {outfile} {filters} -l {var_name}:CHUNK={chunking}'
-    logging.info(f'Command option {options}')
-    exe = subprocess.run(['h5repack', options], capture_output=True, text=True)
-    if exe.result != 0:
+    cmd_list.append('-l')
+    cmd_list.append(f'{var_name}:CHUNK={chunking}')
+    logging.info(f'Command {cmd_list}')
+    exe = subprocess.run(cmd_list, capture_output=True, text=True)
+    if exe.returncode != 0 or exe.stderr != '':
         logging.info(exe.stderr)
+        raise RuntimeError(f'Unable to repack {infile}')
     logging.info(exe.stdout)
     t2 = time()
     logging.info(f'Repack took {t2-t1:.2f}s')
@@ -239,13 +261,14 @@ def pp2nc_from_config(cc, config_file, task_number,
     e1 = time()
     fields = cf.read(myfiles)
     e2 = time()
-    logging.info('Reading completed in {e2-e1:.1f}s')
+    logging.info(f'Reading completed in {e2-e1:.1f}s')
 
     # get rid of each field as it is done.
     #queue = deque(fields)
     #while queue:
     #    f = queue.popleft()
     for f in fields:
+        f = fix_axes(f)
         fkey = get_frequency_attribute(f)
         tc = f.coordinate('T').data
         common_concept_name = cc.identify(f)
