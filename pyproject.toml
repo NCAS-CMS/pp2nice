@@ -1,0 +1,85 @@
+[build-system]
+requires = [
+    "setuptools >= 40.6.0",
+    "setuptools_scm>=6.2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+authors = [
+    {name = "Bryan Lawrence", email = "bryan.lawrence@ncas.ac.uk"},
+]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+]
+dynamic = [
+    "readme",
+    "version",
+]
+dependencies = [
+    'minio',
+    'cf-python',
+    'pyfive @ git+https://github.com/ncas-cms/pyfive.git@optimise',
+]
+description = 'Tools for converting pp model data to netcdf with "lite" metadata'
+license = {text = "BSD License, Version 3-Clause"}
+name = "pp2nice"
+requires-python = ">=3.10"
+
+
+
+# these become "python executables" in the environment bin 
+[project.scripts]
+pp2nice = "pp2nice.cli:main"
+pp2niceconfig = "pp2nice.cli_generate_config:main"
+
+#sends the slurm scripts to bin alongside the python "executables"
+[tool.setuptools.data-files]
+"bin" = ["scripts/slurm_pp2nc.sh"]
+
+[tool.setuptools.package-data]
+"pp2nice.assets" = [
+    "vocabs/*.json",
+    "vocabs/*.yaml",
+    "*.cfg"
+]
+
+[project.optional-dependencies]
+test = [
+   'pytest',
+   'pytest-mock',
+]
+dev = [
+    'pytest',
+    'pytest-mock',
+    'ipython'
+]
+
+# needed for doc builds
+doc = [
+    "autodocsumm",
+    "sphinx",
+    "sphinx_rtd_theme",
+]
+
+
+[tool.setuptools]
+include-package-data = true
+license-files = ["LICENSE"]
+packages = ["pp2nice"]
+zip-safe = false  # possibly yes
+
+[tool.setuptools.dynamic]
+readme = {file = "README.md", content-type = "text/markdown"}
+
+
