@@ -1,0 +1,95 @@
+##################################################################### 
+# This is the file that was used to generate HRCM N1280 NetCDF files
+## by Bryan Lawrence in 2024. 
+#
+# It is read by the generate_config.py script.
+#
+# For a new application you should copy this file, edit the output json name,
+# the experiment detail, and the locaiton of your existing data, 
+# and where you want the output data.  
+##################################################################### 
+
+
+# ===============================================================
+# Processing Configuration for N1280 Output
+# ===============================================================
+
+# Name of this configuration file (for reference)
+config_name: n1280_processing_v1.yaml
+
+
+# ---------------------------------------------------------------
+# NetCDF Storage Configuration
+# ---------------------------------------------------------------
+# Only change this if you really know what you are doing.
+# Chunksize is size _before_ compression, and applied to all variables.
+# Your actual chunk size will depend on the variable shape and compression.
+ 
+storage_options:
+  compress: 4
+  shuffle: true
+  chunksize: 1000000    # equivalent to 1e6
+
+
+# ---------------------------------------------------------------
+# Experiment Configuration
+# ---------------------------------------------------------------
+# The following metadata fields are mandatory:
+# ['project','experiment','source_id','nominal_resolution','model_configuration','author'/'owner']
+# You need to quote strings that do anything but use the standard alphabet and -.
+
+experiment_detail:
+  institution: NCAS
+  source_id: HadGA7EA-N1280
+  source_type: AGCM
+  grid_name: UM/N1280
+  domain_name: global
+  model_configuration: "GA7.2.1-Easy Aerosol L85 / GL8 "
+  version: UM11.6
+  nominal_resolution: 10 km
+  owner: Professor P.-L. Vidale
+  project: HRCM
+  experiment: HighresSST-present
+  further_info_url_base: https://github.com/ncas-cms/further_info
+  mip: HighResMIP
+  mip_era: CMIP6
+  parentage: "Follows one year of u-cd936 then 1 year of u-cf432"
+  ensemble_type: Perturbed stochastic physics
+  realm: atmos
+  grid_label: gn
+  notes: "Not formally part of HighResMIP but conforming to the protocol"
+
+
+# ---------------------------------------------------------------
+# Input Data and Aggregation
+# ---------------------------------------------------------------
+# This is where your input PP data resides and how variables should be aggregated in time.
+origin: /gws/nopw/j04/hrcm/n1280run
+
+# For each (subdir, N), aggregate N files at once
+# e.g. ('1hrly', 15) will combine 15 files into one per variable.
+subdirs:
+  - ["1hrly", 15]
+  - ["6hrly", 3]
+  - ["apy", 35]
+
+# Simulation identifiers and corresponding CMIP-style member labels
+simulations:
+  u-ch330: r1i1p1f1
+  u-ck777: r2i1p1f1
+  u-ck778: r3i1p1f1
+
+
+# ---------------------------------------------------------------
+# Additional Metadata for S3 Version
+# ---------------------------------------------------------------
+# These will be merged with automatic metadata like:
+# 'standard_name', 'long_name', 'shape', and 'chunk_shape'
+user_metadata: {}
+
+
+# ---------------------------------------------------------------
+# Output Location
+# ---------------------------------------------------------------
+# Leave blank to use the current working directory
+output_location: ""

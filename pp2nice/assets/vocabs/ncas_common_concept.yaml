@@ -1,0 +1,73 @@
+# ===============================================================
+# NCAS Common Concept Mapping
+# ===============================================================
+
+# This may not be the way to do this.
+ncas_common_concept:
+  index:
+    # psl is an alias issue, so this duplicate is ok
+    air_pressure_at_sea_level: psl
+    ertel_potential_vorticity: epv
+
+    HEAVYSIDE FN ON P LEV/UV GRID: hfnpuv
+    TOTAL MOISTURE FLUX U  RHO GRID: tmfurg
+    TOTAL MOISTURE FLUX V  RHO GRID: tmfvrg
+
+    # consider converting to flux to be CMIP consistent?
+    snowfall_amount: snamt
+
+    surface_eastward_sea_water_velocity: swevs
+    surface_northward_sea_water_velocity: swnvs
+
+    # this is turning up in annual means, shouldn't it be fx?
+    land_binary_mask: lbmask
+
+    CCA WITH ANVIL AFTER TIMESTEP: ccaanv
+    BULK CLOUD FRACTION IN EACH LAYER: laycldfblk
+    sea_ice_albedo: sia
+    LAYER CLD LIQ RE * LAYER CLD WEIGHT: cldlayliq
+    LAYER CLOUD WEIGHT FOR MICROPHYSICS: cldlaypxwgt
+    CONV CLOUD LIQ RE * CONV CLD WEIGHT: cldconwgt
+    CONV CLOUD WEIGHT FOR MICROPHYSICS: cldconpxwgt
+    DROPLET NUMBER CONC * LYR CLOUD WGT: clddnumwgt
+    LAYER CLOUD LWC * LAYER CLOUD WEIGHT: cldlaylwcwgt
+    2-D RE DISTRIBUTION * 2-D RE WEIGHT: cld2ddxw
+    WEIGHT FOR 2-D RE DISTRIBUTION: cld2dwgt
+    2-D RE * WEIGHT - WARM CLOUDS ONLY: cld2dwgtwc
+    WEIGHT FOR WARM CLOUD 2-D RE: cldwgt2dwc
+    NET DN SW O SEA FLX BLW 690NM:SEA MN: radnetseaflx1
+    COLUMN-INTEGRATED Nd * SAMP. WEIGHT: colndxwgt
+    SAMP. WEIGHT FOR COL. INT. Nd: colndwgt
+    FOSSIL FUEL ORG C OPTIC DEPTH IN RAD: radorgcod
+    DUST OPTICAL DEPTH FROM PROGNOSTIC: raddustod
+    downward_heat_flux_in_sea_ice: sihf
+
+    # check this isn't surface_upward_sensible_heat_flux
+    SURFACE SENSIBLE  HEAT FLUX     W/M2: hfss
+
+    surface_upward_water_flux: wfs
+    wind_mixing_energy_flux_into_sea_water: wmefsw
+    SUBLIM. FROM SURFACE (GBM)  KG/M2/TS: slms
+    "EVAP FROM OPEN SEA: SEA MEAN KG/M2/S": evoss
+    SEAICE TOP MELT LH FLX:SEA MEAN W/M2: sitmhf
+
+    # have assumed this is the CMIP6 quantity, which should have name "specific humidity"
+    SPECIFIC HUMIDITY  AT 1.5M: huss
+
+    surface_snow_melt_heat_flux: snmhfs
+    gross_primary_productivity_of_carbon: cgpp
+    CANOPY EVAPORATION ON TILES: canevt
+    soil_respiration_carbon_flux: cflxsr
+    water_sublimation_flux: slwflx
+    TURBULENT MIXING HT AFTER B.LAYER m: tmxhgt
+    STABLE BL INDICATOR: sbli
+    STRATOCUM. OVER STABLE BL INDICATOR: scsbli
+    WELL_MIXED BL INDICATOR: wmbli
+    DECOUPLED SC. NOT OVER CU. INDICATOR: scdncui
+    DECOUPLED SC. OVER CU. INDICATOR: scdcui
+    CUMULUS-CAPPED BL INDICATOR: ccbli
+    SURFACE TILE FRACTIONS: stf
+    CANOPY WATER ON TILES          KG/M2: cwot
+    SUBLIMATION MOISTURE FLUX ON TILES: smfot
+    SHEAR-DRIVEN B.LAYER INDICATOR: sdbli
+    SUBLIM. SEAICE:SEA MEAN RATE KG/M2/S: slsi
